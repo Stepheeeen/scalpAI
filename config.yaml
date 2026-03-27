@@ -1,0 +1,33 @@
+# cTrader API Settings
+ctrader:
+  host: "live.ctraderapi.com"
+  port: 5035
+  heartbeat_interval: 10
+  watchdog_timeout: 30
+
+# Strategy Settings
+strategy:
+  symbol_name: "XAUUSD"
+  target_confidence: 0.82
+  
+# Risk Management (Placeholder for Step 4)
+risk:
+  max_drawdown_pct: 1.0
+  stop_loss_pips: 15
+  take_profit_pips: 25
+  auto_break_even_pips: 5
+
+# Telegram Settings
+telegram:
+  enabled: true
+  notifications:
+    on_trade: true
+    on_error: true
+    on_reconnect: true
+
+# Logging Settings
+logging:
+  level: "INFO"
+  log_to_file: true
+  csv_file: "live_gold_data.csv"
+  json_log: "bot_audit.log"

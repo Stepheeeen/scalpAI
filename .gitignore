@@ -1,0 +1,5 @@
+.env
+.env.template
+__pycache__/
+*.csv
+openapi_pb2/

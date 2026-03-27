@@ -1,0 +1,16 @@
+[Unit]
+Description=XAU/USD HFT Bot - Connection Core
+After=network.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/Users/admin/Github/scalpAI
+ExecStart=/usr/local/bin/python3 main.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
