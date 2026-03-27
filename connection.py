@@ -147,6 +147,25 @@ class CTraderClient:
             pass
 
     # High-level API calls
+    async def place_market_order(self, account_id: int, symbol_id: int, side: str, volume: int, sl_pips: int = None, tp_pips: int = None):
+        req = oa.ProtoOANewOrderReq()
+        req.ctidTraderAccountId = account_id
+        req.symbolId = symbol_id
+        req.orderType = oa.MARKET
+        req.tradeSide = oa.BUY if side.upper() == "BUY" else oa.SELL
+        req.volume = volume # In 0.01 units
+        
+        # 1 pip for Gold = 0.01. 
+        # relativeStopLoss is in 1/100000 of unit of price.
+        # So 1 pip = 0.01 * 100,000 = 1000 units in protocol.
+        if sl_pips:
+            req.relativeStopLoss = sl_pips * 1000
+        if tp_pips:
+            req.relativeTakeProfit = tp_pips * 1000
+            
+        print(f"Sending MARKET {side} for {volume} units...")
+        return await self.request(req, oa.PROTO_OA_EXECUTION_EVENT)
+
     async def request(self, req: Message, response_type: int) -> common.ProtoMessage:
         future = asyncio.get_running_loop().create_future()
         
