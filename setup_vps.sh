@@ -47,7 +47,11 @@ python3 -m venv venv
 ./venv/bin/pip install --upgrade pip
 ./venv/bin/pip install websockets protobuf python-dotenv pyyaml python-telegram-bot grpcio-tools pandas numpy xgboost scikit-learn
 
-# 6. Service Installation
+# 6. Ensure directories are treated as packages
+touch openapi_pb2/__init__.py
+touch protos/__init__.py
+
+# 7. Service Installation
 echo "--- ⚙️ Configuring Systemd Service ---"
 PROJECT_DIR=$(pwd)
 PYTHON_PATH="$PROJECT_DIR/venv/bin/python3"

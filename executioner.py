@@ -1,5 +1,6 @@
 import logging
 from openapi_pb2 import OpenApiMessages_pb2 as oa
+from openapi_pb2 import OpenApiModelMessages_pb2 as model
 
 class OrderManager:
     def __init__(self, client, notifier, account_id: int):
@@ -15,7 +16,7 @@ class OrderManager:
         
         execution_type = event.executionType
         
-        if execution_type == oa.FILLED:
+        if execution_type == model.ORDER_FILLED:
             pos = event.position
             deal = event.deal
             
@@ -28,13 +29,13 @@ class OrderManager:
             else: # This is an opening deal
                 self.positions[pos.positionId] = {
                     "entry_price": deal.executionPrice,
-                    "side": "BUY" if deal.tradeSide == oa.BUY else "SELL",
+                    "side": "BUY" if deal.tradeSide == model.BUY else "SELL",
                     "has_be_set": False,
                     "symbol_id": pos.symbolId
                 }
                 self.logger.info(f"Position {pos.positionId} opened at {deal.executionPrice}")
                 await self.notifier.notify_trade(
-                    "BUY" if deal.tradeSide == oa.BUY else "SELL", 
+                    "BUY" if deal.tradeSide == model.BUY else "SELL", 
                     deal.volume / 100.0, 
                     deal.executionPrice
                 )

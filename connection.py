@@ -7,6 +7,7 @@ from typing import Dict, Optional, Callable, List
 from google.protobuf.message import Message
 from openapi_pb2 import OpenApiCommonMessages_pb2 as common
 from openapi_pb2 import OpenApiMessages_pb2 as oa
+from openapi_pb2 import OpenApiModelMessages_pb2 as model
 from openapi_pb2 import OpenApiCommonModelMessages_pb2 as common_model
 
 class CTraderClient:
@@ -117,7 +118,7 @@ class CTraderClient:
         # Internal handling
         if payload_type == common.HEARTBEAT_EVENT:
             pass
-        elif payload_type == oa.PROTO_OA_ERROR_RES:
+        elif payload_type == model.PROTO_OA_ERROR_RES:
             err = oa.ProtoOAErrorRes()
             err.ParseFromString(proto_msg.payload)
             self.logger.error(f"API Error: {err.errorCode} - {err.description}")
@@ -151,8 +152,8 @@ class CTraderClient:
         req = oa.ProtoOANewOrderReq()
         req.ctidTraderAccountId = account_id
         req.symbolId = symbol_id
-        req.orderType = oa.MARKET
-        req.tradeSide = oa.BUY if side.upper() == "BUY" else oa.SELL
+        req.orderType = model.MARKET
+        req.tradeSide = model.BUY if side.upper() == "BUY" else model.SELL
         req.volume = volume # In 0.01 units
         
         # 1 pip for Gold = 0.01. 
@@ -164,7 +165,7 @@ class CTraderClient:
             req.relativeTakeProfit = tp_pips * 1000
             
         print(f"Sending MARKET {side} for {volume} units...")
-        return await self.request(req, oa.PROTO_OA_EXECUTION_EVENT)
+        return await self.request(req, model.PROTO_OA_EXECUTION_EVENT)
 
     async def request(self, req: Message, response_type: int) -> common.ProtoMessage:
         future = asyncio.get_running_loop().create_future()
@@ -184,7 +185,7 @@ class CTraderClient:
         req = oa.ProtoOAApplicationAuthReq()
         req.clientId = self.client_id
         req.clientSecret = self.client_secret
-        msg = await self.request(req, oa.PROTO_OA_APPLICATION_AUTH_RES)
+        msg = await self.request(req, model.PROTO_OA_APPLICATION_AUTH_RES)
         res = oa.ProtoOAApplicationAuthRes()
         res.ParseFromString(msg.payload)
         return res
@@ -194,7 +195,7 @@ class CTraderClient:
         req = oa.ProtoOAAccountAuthReq()
         req.ctidTraderAccountId = account_id
         req.accessToken = self.access_token
-        msg = await self.request(req, oa.PROTO_OA_ACCOUNT_AUTH_RES)
+        msg = await self.request(req, model.PROTO_OA_ACCOUNT_AUTH_RES)
         res = oa.ProtoOAAccountAuthRes()
         res.ParseFromString(msg.payload)
         return res

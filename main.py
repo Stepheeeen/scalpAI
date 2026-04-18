@@ -10,6 +10,7 @@ from features import FeatureFactory
 from brain import XGBoostGatekeeper
 from executioner import OrderManager
 from openapi_pb2 import OpenApiMessages_pb2 as oa
+from openapi_pb2 import OpenApiModelMessages_pb2 as model
 
 # Setup logging
 logging.basicConfig(
@@ -119,7 +120,7 @@ class HFTBot:
         
         # Initialize Executioner once account is known
         self.executioner = OrderManager(self.client, self.notifier, self.account_id)
-        self.client.add_callback(oa.PROTO_OA_EXECUTION_EVENT, self.executioner.handle_execution_event)
+        self.client.add_callback(model.PROTO_OA_EXECUTION_EVENT, self.executioner.handle_execution_event)
 
         if not self.symbol_id:
             logger.info(f"Discovering Symbol ID for {self.config.symbol_name}...")
@@ -133,7 +134,7 @@ class HFTBot:
             raise ValueError(f"Symbol {self.config.symbol_name} not found")
 
         # Subscribe to spots
-        self.client.add_callback(oa.PROTO_OA_SPOT_EVENT, self.on_spot_event)
+        self.client.add_callback(model.PROTO_OA_SPOT_EVENT, self.on_spot_event)
         req = oa.ProtoOASubscribeSpotsReq()
         req.ctidTraderAccountId = self.account_id
         req.symbolId.append(self.symbol_id)
