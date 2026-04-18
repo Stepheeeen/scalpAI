@@ -5,7 +5,7 @@ echo "--- 🚀 Equinix HFT Bot Deployment Starting ---"
 
 # 1. System Update & Dependencies
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3-pip python3-dev git curl chrony ufw
+sudo apt install -y python3-pip python3-dev python3-venv git curl chrony ufw
 
 # 2. High-Precision Clock Sync (Critical for NY4/HFT)
 echo "--- 🕒 Configuring High-Precision Clock Sync ---"
@@ -42,13 +42,15 @@ sudo ufw allow ssh
 sudo ufw --force enable
 
 # 5. Project Dependencies
-echo "--- 📦 Installing Python Dependencies ---"
-pip3 install websockets protobuf python-dotenv pyyaml python-telegram-bot grpcio-tools pandas numpy xgboost scikit-learn
+echo "--- 📦 Installing Python Dependencies in Virtual Environment ---"
+python3 -m venv venv
+./venv/bin/pip install --upgrade pip
+./venv/bin/pip install websockets protobuf python-dotenv pyyaml python-telegram-bot grpcio-tools pandas numpy xgboost scikit-learn
 
 # 6. Service Installation
 echo "--- ⚙️ Configuring Systemd Service ---"
 PROJECT_DIR=$(pwd)
-PYTHON_PATH=$(which python3)
+PYTHON_PATH="$PROJECT_DIR/venv/bin/python3"
 
 # Update placeholders in service file
 sed -i "s|{{PROJECT_DIR}}|$PROJECT_DIR|g" bot.service
