@@ -69,26 +69,30 @@ class HFTBot:
         if not features:
             return
 
-        confidence = self.brain.get_confidence(features)
+        signal_type, confidence = self.brain.get_signal(features)
         
         # 4. Check for Trade Execution
-        # Condition: High Confidence + No existing position (simple logic for now)
-        if confidence > 0.82 and not self.executioner.positions:
-            # Determine Side based on Velocity (Step 2)
-            side = "BUY" if features["velocity_100ms"] > 0 else "SELL"
+        if confidence >= self.config.target_confidence and not self.executioner.positions:
+            if signal_type == 0:
+                return # None
+                
+            side = "BUY" if signal_type == 1 else "SELL"
             
-            logger.info(f"🚀 AI Signal: {side} with {confidence*100:.1f}% confidence feat: {features}")
+            logger.info(f"🚀 AI Signal: {side} with {confidence*100:.1f}% confidence. Features: {features}")
+            
+            if self.config.dry_run:
+                logger.info(f"DRY RUN: skipping {side} order.")
+                await self.notifier.send_message(f"🧪 <b>Dry Run Signal</b>: {side} @ {confidence*100:.1f}%")
+                return
+
             try:
-                # 100 units = 1.0 lot in Gold? No, usually 1 lot = 100 ounces.
-                # In cTrader, volume 1000 = 10 units? 
-                # Let's use a small volume for safety: 100 = 1.0 unit.
                 await self.client.place_market_order(
                     self.account_id, 
                     self.symbol_id, 
                     side, 
-                    volume=100, # 1.0 units (mini)
-                    sl_pips=15, 
-                    tp_pips=25
+                    volume=100, 
+                    sl_pips=self.config.risk_stop_loss_pips, 
+                    tp_pips=self.config.risk_take_profit_pips
                 )
             except Exception as e:
                 logger.error(f"Execution Error: {e}")
@@ -142,7 +146,8 @@ class HFTBot:
         backoff = 1
         max_backoff = 60
         
-        await self.notifier.send_message("🤖 <b>Bot Online</b> (Full Logic Enabled)")
+        mode_str = "DRY RUN MODE" if self.config.dry_run else "FULL LOGIC ENABLED"
+        await self.notifier.send_message(f"🤖 <b>Bot Online</b> ({mode_str})")
         
         while self.running:
             try:

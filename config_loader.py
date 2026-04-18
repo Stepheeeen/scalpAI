@@ -8,8 +8,6 @@ class Config:
         
         # Load YAML
         with open(config_path, "r") as f:
-            self.raw = yaml.safe_all([f]) # This was wrong, should be safe_load
-            f.seek(0)
             self.raw = yaml.safe_load(f)
 
         # Credentials (Env only)
@@ -26,12 +24,22 @@ class Config:
         # API settings
         self.host = self.raw["ctrader"]["host"]
         self.port = self.raw["ctrader"]["port"]
-        self.symbol_name = self.raw["strategy"]["symbol_name"]
+        strategy = self.raw.get("strategy", {})
+        self.symbol_name = strategy.get("symbol_name", "XAUUSD")
+        self.target_confidence = strategy.get("target_confidence", 0.82)
+        self.dry_run = strategy.get("dry_run", True)
         
+        # Risk Management
+        risk = self.raw.get("risk", {})
+        self.risk_stop_loss_pips = risk.get("stop_loss_pips", 15)
+        self.risk_take_profit_pips = risk.get("take_profit_pips", 25)
+        self.risk_auto_break_even_pips = risk.get("auto_break_even_pips", 5)
+
         # Logging
-        self.log_level = self.raw["logging"]["level"]
-        self.csv_file = self.raw["logging"]["csv_file"]
-        self.json_log = self.raw["logging"]["json_log"]
+        logging_cfg = self.raw.get("logging", {})
+        self.log_level = logging_cfg.get("level", "INFO")
+        self.csv_file = logging_cfg.get("csv_file", "live_gold_data.csv")
+        self.json_log = logging_cfg.get("json_log", "bot_audit.log")
 
     def validate(self):
         missing = []

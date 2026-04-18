@@ -37,42 +37,43 @@ def generate_labels(df):
 
 def train():
     if not os.path.exists(INPUT_FILE):
-        print(f"Error: {INPUT_FILE} not found. Run the bot first to collect data.")
+        print(f"Error: {INPUT_FILE} not found. Launch the bot in DRY RUN mode to collect data first.")
         return
 
     print("Loading data...")
     df = pd.read_csv(INPUT_FILE)
     
-    # We need features. Since features are calculated in real-time in the bot,
-    # for training we re-calculate them from the CSV.
-    # Note: In a real HFT setup, you'd log features directly to the CSV.
-    
-    print("Engineering features and labels...")
-    # Features (simplified for this script, should match features.py)
+    print("Engineering features for alignment...")
+    # Matches features.py precisely
     df['mid'] = (df['bid'] + df['ask']) / 2
-    df['spread'] = df['ask'] - df['bid']
-    df['velocity_1s'] = df['mid'].diff(10) # Roughly 10 ticks ~ 1s?
-    df['volatility'] = df['mid'].rolling(20).std()
+    df['spread'] = (df['ask'] - df['bid']) * 100
+    
+    # Calculate velocities based on roughly 1 tick ~ 100ms (approximate for training)
+    # In a real setup, we would log features directly in the bot to the CSV.
+    df['velocity_100ms'] = df['mid'].diff(1).fillna(0) * 100
+    df['velocity_500ms'] = df['mid'].diff(5).fillna(0) * 100
+    df['velocity_1s'] = df['mid'].diff(10).fillna(0) * 100
+    df['volatility'] = df['mid'].rolling(10).std().fillna(0) * 100
     
     df['target'] = generate_labels(df)
     
-    # Drop NAs from rolling/diff
-    df = df.dropna()
+    # Drop rows without enough history
+    df = df.iloc[20:].dropna()
     
-    features = ['spread', 'velocity_1s', 'volatility', 'latency_ms']
+    features = ['spread', 'velocity_100ms', 'velocity_500ms', 'velocity_1s', 'volatility']
     X = df[features]
     y = df['target']
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    print("Training XGBoost...")
+    print(f"Training XGBoost on {len(X)} samples...")
     model = xgb.XGBClassifier(
-        n_estimators=100,
-        max_depth=6,
-        learning_rate=0.1,
+        n_estimators=150,
+        max_depth=5,
+        learning_rate=0.05,
         objective='multi:softprob',
         num_class=3,
-        tree_method='hist' # Fast training
+        tree_method='hist'
     )
     
     model.fit(X_train, y_train)
@@ -80,10 +81,10 @@ def train():
     # Evaluate
     preds = model.predict(X_test)
     acc = accuracy_score(y_test, preds)
-    print(f"Training Complete. Accuracy: {acc*100:.2f}%")
+    print(f"✅ Training Complete. Accuracy: {acc*100:.2f}%")
     
     model.save_model(MODEL_OUTPUT)
-    print(f"Model saved to {MODEL_OUTPUT}")
+    print(f"🚀 Model saved to {MODEL_OUTPUT}")
 
 if __name__ == "__main__":
     train()

@@ -1,6 +1,6 @@
 # cTrader API Settings
 ctrader:
-  host: "live.ctraderapi.com"
+  host: "demo.ctraderapi.com"
   port: 5035
   heartbeat_interval: 10
   watchdog_timeout: 30
@@ -9,6 +9,7 @@ ctrader:
 strategy:
   symbol_name: "XAUUSD"
   target_confidence: 0.82
+  dry_run: true
   
 # Risk Management (Placeholder for Step 4)
 risk:

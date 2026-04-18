@@ -21,27 +21,35 @@ class XGBoostGatekeeper:
         else:
             self.logger.warning(f"AI Model not found at {self.model_path}. Running in MOCK Mode.")
 
-    def get_confidence(self, features: dict) -> float:
-        """Returns a confidence score between 0.0 and 1.0."""
+    def get_signal(self, features: dict) -> tuple:
+        """
+        Processes features and returns (signal_type, confidence).
+        signal_type: 0 (None), 1 (Buy), 2 (Sell)
+        """
         if not features:
-            return 0.0
+            return 0, 0.0
             
         if self.model:
             try:
-                # Convert features to DMatrix
-                # Order matters here! Should match training order.
+                # Feature names must match training EXACTLY
                 feature_names = ["spread", "velocity_100ms", "velocity_500ms", "velocity_1s", "volatility"]
                 data = np.array([[features.get(f, 0.0) for f in feature_names]])
                 dmatrix = xgb.DMatrix(data, feature_names=feature_names)
                 
-                prediction = self.model.predict(dmatrix)
-                return float(prediction[0])
+                # Predict returns probabilities for each class
+                probs = self.model.predict(dmatrix)[0]
+                signal_type = np.argmax(probs)
+                confidence = float(probs[signal_type])
+                
+                return signal_type, confidence
             except Exception as e:
                 self.logger.error(f"AI Prediction Error: {e}")
-                return 0.0
+                return 0, 0.0
         else:
-            # MOCK MODE: Return high confidence if velocity is strong to test executioner
-            velocity = features.get("velocity_100ms", 0)
-            if abs(velocity) > 0.1: # Simulating momentum
-                 return 0.85
-            return 0.5
+            # MOCK MODE: Return high confidence if velocity is strong
+            v100 = features.get("velocity_100ms", 0)
+            if v100 > 1.5:  # ~1.5 pips
+                return 1, 0.85 # Mock BUY
+            elif v100 < -1.5:
+                return 2, 0.85 # Mock SELL
+            return 0, 0.5

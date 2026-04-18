@@ -1,54 +1,64 @@
 import pandas as pd
 import os
-
-# Configuration
-INPUT_FILE = "live_gold_data.csv"
-SL_PIPS = 15
-TP_PIPS = 25
-BE_PIPS = 5
+from brain import XGBoostGatekeeper
+from features import FeatureFactory
+from config_loader import Config
 
 def backtest():
-    if not os.path.exists(INPUT_FILE):
-        print(f"Error: {INPUT_FILE} not found. Run the bot first to collect data.")
+    config = Config()
+    input_file = config.csv_file
+    
+    if not os.path.exists(input_file):
+        print(f"Error: {input_file} not found. Run the bot first to collect data.")
         return
 
-    print("Replaying historical ticks...")
-    df = pd.read_csv(INPUT_FILE)
-    df['mid'] = (df['bid'] + df['ask']) / 2
+    print(f"Initializing AI Backtest on {input_file}...")
+    brain = XGBoostGatekeeper()
+    feature_factory = FeatureFactory()
     
-    # Simulating signals (Assuming the model was already trained)
-    # Using a simple moving average crossover for the backtest demonstration
-    df['ma5'] = df['mid'].rolling(5).mean()
-    df['ma20'] = df['mid'].rolling(20).mean()
-    
+    df = pd.read_csv(input_file)
     trades = []
     active_trade = None # {entry_price, side, sl, tp, has_be_set}
     
-    for i in range(20, len(df)):
+    # Risk settings from config
+    SL_PIPS = config.risk_stop_loss_pips if hasattr(config, "risk_stop_loss_pips") else 15
+    TP_PIPS = config.risk_take_profit_pips if hasattr(config, "risk_take_profit_pips") else 25
+    BE_PIPS = config.risk_auto_break_even_pips if hasattr(config, "risk_auto_break_even_pips") else 5
+    THRESHOLD = config.target_confidence
+    
+    for i in range(len(df)):
         tick = df.iloc[i]
         
+        # 1. Update features
+        feature_factory.add_tick(tick['bid'], tick['ask'], tick['server_time'])
+        
         if active_trade is None:
-            # Signal: MA5 Cross MA20
-            if df['ma5'].iloc[i] > df['ma20'].iloc[i] and df['ma5'].iloc[i-1] <= df['ma20'].iloc[i-1]:
-                # BUY
-                active_trade = {
-                    "entry_price": tick['ask'],
-                    "side": "BUY",
-                    "sl": tick['ask'] - (SL_PIPS * 0.01),
-                    "tp": tick['ask'] + (TP_PIPS * 0.01),
-                    "has_be_set": False
-                }
-            elif df['ma5'].iloc[i] < df['ma20'].iloc[i] and df['ma5'].iloc[i-1] >= df['ma20'].iloc[i-1]:
-                # SELL
-                active_trade = {
-                    "entry_price": tick['bid'],
-                    "side": "SELL",
-                    "sl": tick['bid'] + (SL_PIPS * 0.01),
-                    "tp": tick['bid'] - (TP_PIPS * 0.01),
-                    "has_be_set": False
-                }
+            # 2. Get Signal
+            features = feature_factory.get_features()
+            if not features:
+                continue
+                
+            signal_type, confidence = brain.get_signal(features)
+            
+            if confidence >= THRESHOLD:
+                if signal_type == 1: # BUY
+                    active_trade = {
+                        "entry_price": tick['ask'],
+                        "side": "BUY",
+                        "sl": tick['ask'] - (SL_PIPS * 0.01),
+                        "tp": tick['ask'] + (TP_PIPS * 0.01),
+                        "has_be_set": False
+                    }
+                elif signal_type == 2: # SELL
+                    active_trade = {
+                        "entry_price": tick['bid'],
+                        "side": "SELL",
+                        "sl": tick['bid'] + (SL_PIPS * 0.01),
+                        "tp": tick['bid'] - (TP_PIPS * 0.01),
+                        "has_be_set": False
+                    }
         else:
-            # Manage Active Trade
+            # 3. Manage Active Trade
             if active_trade["side"] == "BUY":
                 # Check BE
                 if not active_trade["has_be_set"]:
@@ -62,7 +72,6 @@ def backtest():
                     trades.append(TP_PIPS)
                     active_trade = None
                 elif tick['bid'] <= active_trade["sl"]:
-                    # SL or BE Hit
                     loss = (tick['bid'] - active_trade["entry_price"]) * 100
                     trades.append(loss)
                     active_trade = None
@@ -85,15 +94,17 @@ def backtest():
 
     # Performance Stats
     if not trades:
-        print("No trades executed.")
+        print("No trades executed with current threshold.")
         return
 
     win_rate = len([t for t in trades if t > 0]) / len(trades)
     total_profit = sum(trades)
-    print(f"--- Backtest Results ---")
+    print(f"\n--- AI Backtest Results ---")
     print(f"Total Trades: {len(trades)}")
     print(f"Win Rate: {win_rate*100:.2f}%")
     print(f"Net Pips: {total_profit:.2f}")
+    if len(trades) > 0:
+        print(f"Avg Pips/Trade: {total_profit/len(trades):.2f}")
 
 if __name__ == "__main__":
     backtest()
