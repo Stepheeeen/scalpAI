@@ -5,8 +5,8 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory={{PROJECT_DIR}}
-ExecStart={{PYTHON_PATH}} main.py
+WorkingDirectory=/root/scalpAI
+ExecStart=/root/scalpAI/venv/bin/python3 main.py
 Restart=always
 RestartSec=5
 StandardOutput=journal

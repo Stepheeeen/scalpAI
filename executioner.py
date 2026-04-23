@@ -1,10 +1,12 @@
 import logging
 from openapi_pb2 import OpenApiMessages_pb2 as oa
+from openapi_pb2 import OpenApiModelMessages_pb2 as model
 
 class OrderManager:
-    def __init__(self, client, notifier, account_id: int):
+    def __init__(self, client, notifier, account_id: int, performance=None):
         self.client = client
         self.notifier = notifier
+        self.performance = performance
         self.account_id = account_id
         self.positions = {} # position_id -> {entry_price, side, has_be_set}
         self.logger = logging.getLogger("OrderManager")
@@ -15,26 +17,41 @@ class OrderManager:
         
         execution_type = event.executionType
         
-        if execution_type == oa.FILLED:
+        if execution_type == model.ORDER_FILLED:
             pos = event.position
             deal = event.deal
             
             # 1. Check if it's an OPEN or CLOSE
-            # deal.volume is total volume. For opening, it matches position.volume.
             if deal.closingDealId: # This is a closing deal
+                # Calculate PnL and Commission
+                pnl = deal.realizedPnL / 100.0 if hasattr(deal, 'realizedPnL') else 0.0
+                comm = deal.commission / 100.0 if hasattr(deal, 'commission') else 0.0
+                
+                self.logger.info(f"💰 Trade Closed: PnL=${pnl:,.2f}, Comm=${comm:,.2f}")
+                
+                if self.performance:
+                    self.performance.log_trade(pnl, comm)
+                
                 if pos.positionId in self.positions:
                     del self.positions[pos.positionId]
-                    self.logger.info(f"Position {pos.positionId} closed.")
+                    self.logger.info(f"Position {pos.positionId} removed from tracking.")
+                
+                await self.notifier.send_message(
+                    f"🏁 <b>Trade Closed</b>\n"
+                    f"Side: {'BUY' if deal.tradeSide == model.BUY else 'SELL'}\n"
+                    f"Price: {deal.executionPrice}\n"
+                    f"PnL: <b>${pnl:,.2f}</b>"
+                )
             else: # This is an opening deal
                 self.positions[pos.positionId] = {
                     "entry_price": deal.executionPrice,
-                    "side": "BUY" if deal.tradeSide == oa.BUY else "SELL",
+                    "side": "BUY" if deal.tradeSide == model.BUY else "SELL",
                     "has_be_set": False,
                     "symbol_id": pos.symbolId
                 }
                 self.logger.info(f"Position {pos.positionId} opened at {deal.executionPrice}")
                 await self.notifier.notify_trade(
-                    "BUY" if deal.tradeSide == oa.BUY else "SELL", 
+                    "BUY" if deal.tradeSide == model.BUY else "SELL", 
                     deal.volume / 100.0, 
                     deal.executionPrice
                 )

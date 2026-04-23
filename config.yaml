@@ -9,7 +9,9 @@ ctrader:
 strategy:
   symbol_name: "XAUUSD"
   target_confidence: 0.82
-  dry_run: true
+  dry_run: false
+  model_path: "xgboost_gold_model.json"
+  allow_mock_model: false
   
 # Risk Management (Placeholder for Step 4)
 risk:
