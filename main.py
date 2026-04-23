@@ -12,6 +12,7 @@ from executioner import OrderManager
 from performance import PerformanceTracker
 from openapi_pb2 import OpenApiMessages_pb2 as oa
 from openapi_pb2 import OpenApiModelMessages_pb2 as model
+from openapi_pb2 import OpenApiModelMessages_pb2 as model
 
 # Setup logging
 logging.basicConfig(
@@ -381,6 +382,7 @@ class HFTBot:
             raise ValueError(f"Symbol {self.config.symbol_name} not found")
 
         # Subscribe to spots
+        self.client.add_callback(model.PROTO_OA_SPOT_EVENT, self.on_spot_event)
         self.client.add_callback(model.PROTO_OA_SPOT_EVENT, self.on_spot_event)
         req = oa.ProtoOASubscribeSpotsReq()
         req.ctidTraderAccountId = self.account_id

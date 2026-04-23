@@ -7,6 +7,7 @@ from typing import Dict, Optional, Callable, List
 from google.protobuf.message import Message
 from openapi_pb2 import OpenApiCommonMessages_pb2 as common
 from openapi_pb2 import OpenApiMessages_pb2 as oa
+from openapi_pb2 import OpenApiModelMessages_pb2 as model
 from openapi_pb2 import OpenApiCommonModelMessages_pb2 as common_model
 from openapi_pb2 import OpenApiModelMessages_pb2 as model
 
@@ -144,6 +145,7 @@ class CTraderClient:
         if payload_type == HEARTBEAT_EVENT:
             pass
         elif payload_type == model.PROTO_OA_ERROR_RES:
+        elif payload_type == model.PROTO_OA_ERROR_RES:
             err = oa.ProtoOAErrorRes()
             err.ParseFromString(proto_msg.payload)
             self.logger.error(f"API Error: {err.errorCode} - {err.description}")
@@ -177,6 +179,8 @@ class CTraderClient:
         req = oa.ProtoOANewOrderReq()
         req.ctidTraderAccountId = account_id
         req.symbolId = symbol_id
+        req.orderType = model.MARKET
+        req.tradeSide = model.BUY if side.upper() == "BUY" else model.SELL
         req.orderType = model.MARKET
         req.tradeSide = model.BUY if side.upper() == "BUY" else model.SELL
         req.volume = volume # In 0.01 units
@@ -240,6 +244,7 @@ class CTraderClient:
         req = oa.ProtoOAApplicationAuthReq()
         req.clientId = self.client_id
         req.clientSecret = self.client_secret
+        msg = await self.request(req, model.PROTO_OA_APPLICATION_AUTH_RES)
         msg = await self.request(req, model.PROTO_OA_APPLICATION_AUTH_RES)
         res = oa.ProtoOAApplicationAuthRes()
         res.ParseFromString(msg.payload)
