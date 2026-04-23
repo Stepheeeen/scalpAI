@@ -13,23 +13,9 @@ class Config:
         # Credentials (Env only)
         self.client_id = os.getenv("CTRADER_CLIENT_ID")
         self.client_secret = os.getenv("CTRADER_CLIENT_SECRET")
-        self.bot_env = os.getenv("BOT_ENVIRONMENT", "DEMO").upper() # LIVE or DEMO
-        
-        # Load initial tokens based on current env
-        self.reload_tokens()
-
-    def reload_tokens(self):
-        """Load tokens based on current bot_env preference"""
-        # Re-read .env file to pick up any changes at runtime
-        load_dotenv(override=True)
-        
-        # Try specific tokens first (e.g. CTRADER_LIVE_ACCESS_TOKEN)
-        env_access = os.getenv(f"CTRADER_{self.bot_env}_ACCESS_TOKEN")
-        env_refresh = os.getenv(f"CTRADER_{self.bot_env}_REFRESH_TOKEN")
-        
-        # Fallback to generic names if specific ones aren't found
-        self.access_token = env_access if env_access else os.getenv("CTRADER_ACCESS_TOKEN")
-        self.refresh_token = env_refresh if env_refresh else os.getenv("CTRADER_REFRESH_TOKEN")
+        self.bot_env = os.getenv("BOT_ENVIRONMENT", "LIVE").upper()
+        self.access_token = os.getenv("CTRADER_ACCESS_TOKEN")
+        self.refresh_token = os.getenv("CTRADER_REFRESH_TOKEN")
 
         
         # Telegram (Env + YAML)

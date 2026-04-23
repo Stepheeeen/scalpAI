@@ -268,7 +268,6 @@ class TelegramNotifier:
             'reset_stats': self._cmd_reset_stats,
             'stop': self._cmd_stop,
             'restart': self._cmd_restart,
-            'mode': self._cmd_mode,
             'dashboard': self._cmd_dashboard,
             'menu': self._cmd_dashboard,
             'profile': self._cmd_profile,
@@ -344,7 +343,6 @@ class TelegramNotifier:
                 "/stats - Trading statistics\n"
                 "/signals - Signal analysis\n"
                 "/permission - Show current trading permission scope\n"
-                "/mode &lt;live|demo&gt; - Switch environment mode\n"
                 "/reset_stats confirm - Reset statistics\n"
                 "/stop - Stop bot execution\n\n"
                 "All bot activity will be logged here automatically."
@@ -393,13 +391,11 @@ class TelegramNotifier:
             "⚙️ <b>Bot Control:</b>\n"
             "/stop - Stop bot execution and Telegram polling\n"
             "/restart - Restart the bot (reconnect and resume trading)\n"
-            "/mode &lt;live|demo&gt; - Switch between LIVE and DEMO environments\n"
             "/reset_stats confirm - Reset all performance statistics\n\n"
             "💡 <b>How to Use:</b>\n"
             "1. Monitor performance: /kpis, /status, /account\n"
-            "2. Switch environments dynamically: /mode live or /mode demo\n"
-            "3. Ensure your tokens have permissions granted in cTrader!\n"
-            "4. Control trading: /stop to halt operations\n\n"
+            "2. Ensure your tokens have permissions granted in cTrader!\n"
+            "3. Control trading: /stop to halt operations\n\n"
             "🔒 <b>Security:</b> Commands only work from authorized chat ID\n"
             "📱 <b>Keyboard:</b> Use reply keyboard buttons for quick access"
         )
@@ -645,43 +641,7 @@ class TelegramNotifier:
         else:
             await update.message.reply_text("❌ Account switching not available (bot not running)", parse_mode=ParseMode.HTML)
 
-    async def _cmd_mode(self, update, context):
-        """Handle /mode command - switch between LIVE and DEMO"""
-        if str(update.effective_chat.id) != self.chat_id:
-            return
-            
-        args = context.args
-        if not args:
-            current = self.current_account_type
-            await update.message.reply_text(f"ℹ️ Current Mode: <b>{current}</b>\nUsage: /mode &lt;live|demo&gt;", parse_mode=ParseMode.HTML)
-            return
-            
-        new_mode = args[0].upper()
-        if new_mode not in ["LIVE", "DEMO"]:
-            await update.message.reply_text("❌ Invalid mode. Use /mode live or /mode demo", parse_mode=ParseMode.HTML)
-            return
-            
-        if new_mode == self.current_account_type:
-            await update.message.reply_text(f"ℹ️ Bot is already in {new_mode} mode.", parse_mode=ParseMode.HTML)
-            return
 
-        # We trigger a restart with the new mode
-        await update.message.reply_text(f"🔄 <b>Switching to {new_mode} mode...</b>\nBot will discover and connect to the matching account.", parse_mode=ParseMode.HTML)
-        
-        # We need a way to tell the bot its config has changed. 
-        # For now, we can try to find the other account type if discovery logic is in the bot.
-        # But a safer way is to update the env or just trigger the restart logic in the bot.
-        if hasattr(self, 'mode_switch_callback') and self.mode_switch_callback:
-            await self.mode_switch_callback(new_mode)
-        else:
-            # If no direct callback, we can try to use restart_callback if it handles re-loading config
-            if self.restart_callback:
-                # We assume the bot will re-read the environment or we provide a way to pass it.
-                # Since we don't have a direct env writer here, we'll suggest manual .env edit if it fails.
-                if asyncio.iscoroutinefunction(self.restart_callback):
-                    await self.restart_callback()
-                else:
-                    self.restart_callback()
     
     async def _cmd_status(self, update, context):
         """Handle /status command"""
