@@ -244,7 +244,6 @@ class CTraderClient:
         req.clientId = self.client_id
         req.clientSecret = self.client_secret
         msg = await self.request(req, model.PROTO_OA_APPLICATION_AUTH_RES)
-        msg = await self.request(req, model.PROTO_OA_APPLICATION_AUTH_RES)
         res = oa.ProtoOAApplicationAuthRes()
         res.ParseFromString(msg.payload)
         return res
