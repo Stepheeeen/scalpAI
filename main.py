@@ -364,7 +364,7 @@ class HFTBot:
         if not self.heartbeat_task:
             self.heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         
-        logger.info(f"📊 {current_mode} Bot Synchronized: {self.config.symbol_name} (ID: {self.account_id})")
+        logger.info(f"📊 {self.config.bot_env} Bot Synchronized: {self.config.symbol_name} (ID: {self.account_id})")
 
 
     async def switch_account(self, new_account_id: str):

@@ -30,6 +30,23 @@ class PerformanceTracker:
             self.initial_balance = balance
             self.logger.info(f"💰 Initial balance set: ${balance:,.2f}")
 
+    def record_signal(self, signal_type: int, confidence: float, features: dict, accepted: bool):
+        if self.audit_logger:
+            self.audit_logger.log_audit("MODEL_SIGNAL", {
+                "type": "BUY" if signal_type == 1 else ("SELL" if signal_type == -1 else "NEUTRAL"),
+                "confidence": confidence,
+                "accepted": accepted
+            })
+            
+    def record_trade_attempt(self, side: str, volume: int, symbol_id: int, status: str):
+        if self.audit_logger:
+            self.audit_logger.log_audit("TRADE_ATTEMPT", {
+                "side": side,
+                "volume": volume,
+                "symbol_id": symbol_id,
+                "status": status
+            })
+
     def log_trade(self, pnl: float, commission: float = 0.0):
         """Record trade results and update metrics"""
         self.net_pnl += pnl
