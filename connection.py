@@ -227,9 +227,18 @@ class CTraderClient:
                     return
                 future.set_exception(RuntimeError(f"Common Error: {err.errorCode} - {err.description}"))
                 
+        async def order_error_callback(msg):
+            if not future.done():
+                err = oa.ProtoOAOrderErrorEvent()
+                err.ParseFromString(msg.payload)
+                if client_msg_id and hasattr(msg, 'clientMsgId') and msg.clientMsgId != client_msg_id:
+                    return
+                future.set_exception(RuntimeError(f"Order Error: {err.errorCode} - {err.description}"))
+                
         self.add_callback(response_type, callback)
         self.add_callback(model.PROTO_OA_ERROR_RES, error_callback)
         self.add_callback(COMMON_ERROR_RES, common_error_callback)
+        self.add_callback(model.PROTO_OA_ORDER_ERROR_EVENT, order_error_callback)
         
         req_name = type(req).__name__
         self.logger.debug(f"Sending {req_name} (ID: {client_msg_id or 'None'})...")
@@ -251,9 +260,14 @@ class CTraderClient:
             raise
         finally:
             try:
-                self.callbacks[response_type].remove(callback)
-                self.callbacks[model.PROTO_OA_ERROR_RES].remove(error_callback)
-                self.callbacks[COMMON_ERROR_RES].remove(common_error_callback)
+                if callback in self.callbacks.get(response_type, []):
+                    self.callbacks[response_type].remove(callback)
+                if error_callback in self.callbacks.get(model.PROTO_OA_ERROR_RES, []):
+                    self.callbacks[model.PROTO_OA_ERROR_RES].remove(error_callback)
+                if common_error_callback in self.callbacks.get(COMMON_ERROR_RES, []):
+                    self.callbacks[COMMON_ERROR_RES].remove(common_error_callback)
+                if order_error_callback in self.callbacks.get(model.PROTO_OA_ORDER_ERROR_EVENT, []):
+                    self.callbacks[model.PROTO_OA_ORDER_ERROR_EVENT].remove(order_error_callback)
             except Exception as e:
                 self.logger.debug(f"Error cleaning up callbacks: {e}")
 
