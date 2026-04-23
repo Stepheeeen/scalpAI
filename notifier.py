@@ -163,6 +163,7 @@ class TelegramNotifier:
         self.is_authorized = True # Default to true
         self.current_account_permission_scope = "Unknown"
         self._message_lock = asyncio.Lock()
+        self.dashboard_msg_id = None
         self.restart_callback = None
         self.test_trade_callback = None
         self.bot_start_time = datetime.datetime.now()
