@@ -60,6 +60,7 @@ class HFTBot:
         self.notifier.set_performance_tracker(self.performance)
         self.notifier.stop_callback = self.stop
         self.notifier.restart_callback = self.restart
+        self.notifier.test_trade_callback = self.execute_test_trade
         self.executioner = None # Init after account_id is known
         self.can_trade = False
         self.symbol_min_volume = 100 # Default fallback
@@ -81,6 +82,28 @@ class HFTBot:
             self.notifier.set_restart_callback(self.restart)
             # Start Telegram command polling
             asyncio.create_task(self.notifier.start_polling())
+
+    async def execute_test_trade(self):
+        """Manually trigger a minimum volume trade for testing"""
+        if not self.account_id or not self.symbol_id:
+            logger.error("❌ Cannot test trade: Account or Symbol not initialized")
+            return
+            
+        logger.info(f"🧪 Executing TEST BUY on {self.config.symbol_name}...")
+        try:
+            await self.client.place_market_order(
+                self.account_id,
+                self.symbol_id,
+                "BUY",
+                volume=self.symbol_min_volume,
+                sl_pips=None, # No SL for test
+                tp_pips=None  # No TP for test
+            )
+            logger.info("✅ Test trade placed successfully!")
+            await self.notifier.send_message("✅ <b>Test Trade Successful!</b>\nMinimum volume order placed without SL/TP.")
+        except Exception as e:
+            logger.error(f"❌ Test Trade Failed: {e}")
+            await self.notifier.notify_error(f"Test Trade Failed: {e}")
 
     async def on_spot_event(self, proto_msg):
         event = oa.ProtoOASpotEvent()

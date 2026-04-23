@@ -163,7 +163,8 @@ class TelegramNotifier:
         self.is_authorized = True # Default to true
         self.current_account_permission_scope = "Unknown"
         self._message_lock = asyncio.Lock()
-        self.dashboard_msg_id = None
+        self.restart_callback = None
+        self.test_trade_callback = None
         self.bot_start_time = datetime.datetime.now()
         self.current_account_id = None
         self.current_account_balance = 0.0
@@ -273,6 +274,7 @@ class TelegramNotifier:
             'dashboard': self._cmd_dashboard,
             'menu': self._cmd_dashboard,
             'profile': self._cmd_profile,
+            'test_trade': self._cmd_test_trade,
         }
 
     async def start_polling(self):
@@ -562,6 +564,17 @@ class TelegramNotifier:
         self.current_account_equity = equity if equity is not None else balance
         self.current_account_free_margin = free_margin if free_margin is not None else balance
         self.current_account_permission_scope = permission_scope
+
+    async def _cmd_test_trade(self, update, context):
+        """Handle /test_trade command - Force a minimum volume trade"""
+        if str(update.effective_chat.id) != self.chat_id:
+            return
+            
+        if self.test_trade_callback:
+            await update.message.reply_text("🔄 Attempting test trade (Min Volume, No SL/TP)...")
+            await self.test_trade_callback()
+        else:
+            await update.message.reply_text("❌ Test trade callback not registered")
 
     async def _cmd_add_account(self, update, context):
         """Handle /add_account command"""
