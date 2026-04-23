@@ -76,7 +76,6 @@ class HFTBot:
             logging.getLogger().addHandler(handler)
             logger.info("Telegram logging enabled for all bot activity.")
             self.notifier.set_account_switch_callback(self.switch_account)
-            self.notifier.set_mode_switch_callback(self.switch_mode)
             self.notifier.set_stop_callback(self.stop)
             self.notifier.set_restart_callback(self.restart)
             # Start Telegram command polling
