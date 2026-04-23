@@ -195,44 +195,59 @@ class CTraderClient:
         if tp_pips:
             req.relativeTakeProfit = tp_pips * 1000
             
-        self.logger.debug(f"Placing {side} order: {volume}u SL={sl_pips} TP={tp_pips}")
-        return await self.request(req, model.PROTO_OA_EXECUTION_EVENT)
+        client_msg_id = f"ord_{int(time.time()*1000)}"
+        self.logger.debug(f"Placing {side} order: {volume}u SL={sl_pips} TP={tp_pips} ID={client_msg_id}")
+        return await self.request(req, model.PROTO_OA_EXECUTION_EVENT, client_msg_id=client_msg_id)
 
-    async def request(self, req: Message, response_type: int) -> common.ProtoMessage:
+    async def request(self, req: Message, response_type: int, client_msg_id: Optional[str] = None) -> common.ProtoMessage:
         future = asyncio.get_running_loop().create_future()
         
         async def callback(msg):
+            # If client_msg_id is provided, we should ideally match it.
+            # For now, we accept any message of the expected type if it's the first one.
             if not future.done():
+                if client_msg_id and hasattr(msg, 'clientMsgId') and msg.clientMsgId != client_msg_id:
+                    return # Not our response
                 future.set_result(msg)
 
         async def error_callback(msg):
             if not future.done():
                 err = oa.ProtoOAErrorRes()
                 err.ParseFromString(msg.payload)
+                # Only set exception if it matches our clientMsgId (if possible)
+                if client_msg_id and hasattr(msg, 'clientMsgId') and msg.clientMsgId != client_msg_id:
+                    return
                 future.set_exception(RuntimeError(f"API Error: {err.errorCode} - {err.description}"))
 
         async def common_error_callback(msg):
             if not future.done():
                 err = common.ProtoErrorRes()
                 err.ParseFromString(msg.payload)
+                if client_msg_id and hasattr(msg, 'clientMsgId') and msg.clientMsgId != client_msg_id:
+                    return
                 future.set_exception(RuntimeError(f"Common Error: {err.errorCode} - {err.description}"))
                 
         self.add_callback(response_type, callback)
         self.add_callback(model.PROTO_OA_ERROR_RES, error_callback)
         self.add_callback(COMMON_ERROR_RES, common_error_callback)
-        self.logger.debug(f"Sending {type(req).__name__}...")
+        
+        req_name = type(req).__name__
+        self.logger.debug(f"Sending {req_name} (ID: {client_msg_id or 'None'})...")
+        
         try:
-            await self.send(req)
+            await self.send(req, client_msg_id=client_msg_id)
         except Exception as e:
-            self.logger.error(f"❌ Failed to send request {type(req).__name__}: {e}")
+            self.logger.error(f"❌ Failed to send request {req_name}: {e}")
             raise
+            
         try:
-            return await asyncio.wait_for(future, timeout=10)
+            # Increase timeout to 15s for execution events which can be slower
+            return await asyncio.wait_for(future, timeout=15)
         except asyncio.TimeoutError:
-            self.logger.error(f"❌ Request timeout: {type(req).__name__}")
+            self.logger.error(f"❌ Request timeout ({req_name}) after 15s. ID: {client_msg_id}")
             raise
         except Exception as e:
-            self.logger.debug(f"Request failed: {type(req).__name__} - {e}")
+            self.logger.debug(f"Request failed: {req_name} - {e}")
             raise
         finally:
             try:
