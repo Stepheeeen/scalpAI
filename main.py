@@ -408,6 +408,14 @@ class HFTBot:
             logger.info(f"🔄 Switching environment to {new_mode}...")
             self.config.bot_env = new_mode.upper()
             
+            # Reload tokens for the new environment
+            self.config.reload_tokens()
+            
+            # Update client credentials
+            if self.client:
+                self.client.access_token = self.config.access_token
+                self.client.refresh_token = self.config.refresh_token
+            
             # Disconnect to trigger a clean setup_session with the new env preference
             if self.client and self.client.is_connected:
                 await self.client.disconnect()
