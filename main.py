@@ -406,15 +406,19 @@ class HFTBot:
         """Switch between LIVE and DEMO environments"""
         try:
             logger.info(f"🔄 Switching environment to {new_mode}...")
+            self.notifier.bot_state = "⏳ Switching..."
+            await self.notifier.update_dashboard()
+            
             self.config.bot_env = new_mode.upper()
             
-            # Reload tokens for the new environment
+            # Reload tokens from .env (re-reads the file to pick up CTRADER_LIVE/DEMO_...)
             self.config.reload_tokens()
             
-            # Update client credentials
+            # Update client credentials for the next session
             if self.client:
                 self.client.access_token = self.config.access_token
                 self.client.refresh_token = self.config.refresh_token
+                logger.info(f"🔑 Tokens reloaded for {self.config.bot_env} (Access Token starts with: {self.config.access_token[:5]}...)")
             
             # Disconnect to trigger a clean setup_session with the new env preference
             if self.client and self.client.is_connected:

@@ -20,6 +20,9 @@ class Config:
 
     def reload_tokens(self):
         """Load tokens based on current bot_env preference"""
+        # Re-read .env file to pick up any changes at runtime
+        load_dotenv(override=True)
+        
         # Try specific tokens first (e.g. CTRADER_LIVE_ACCESS_TOKEN)
         env_access = os.getenv(f"CTRADER_{self.bot_env}_ACCESS_TOKEN")
         env_refresh = os.getenv(f"CTRADER_{self.bot_env}_REFRESH_TOKEN")
