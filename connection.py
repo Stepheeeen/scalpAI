@@ -46,9 +46,13 @@ class CTraderClient:
         retry_count = 0
         retry_delay = 2
         
+        import ssl
+        import certifi
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        
         while retry_count < max_retries:
             try:
-                self.ws = await websockets.connect(self.uri, ping_interval=None) # We handle heartbeats manually
+                self.ws = await websockets.connect(self.uri, ping_interval=None, ssl=ssl_context) # We handle heartbeats manually
                 self.is_connected = True
                 self.last_msg_time = time.time()
                 self.read_task = asyncio.create_task(self._read_loop())
