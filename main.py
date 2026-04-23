@@ -62,6 +62,7 @@ class HFTBot:
         self.notifier.restart_callback = self.restart
         self.executioner = None # Init after account_id is known
         self.can_trade = False
+        self.symbol_min_volume = 100 # Default fallback
         self.trade_permission_notice_sent = False
         self.symbol_id = None
         self.account_id = None
@@ -144,7 +145,7 @@ class HFTBot:
                     self.account_id,
                     self.symbol_id,
                     side,
-                    volume=100,
+                    volume=self.symbol_min_volume,
                     sl_pips=self.config.risk_stop_loss_pips,
                     tp_pips=self.config.risk_take_profit_pips
                 )
@@ -356,6 +357,18 @@ class HFTBot:
             for s in symbols_res.symbol:
                 if s.symbolName == self.config.symbol_name:
                     self.symbol_id = s.symbolId
+                    
+                    # Fetch detailed symbol info for minVolume
+                    req_detail = oa.ProtoOASymbolByIdReq()
+                    req_detail.ctidTraderAccountId = self.account_id
+                    req_detail.symbolId.append(self.symbol_id)
+                    msg_detail = await self.client.request(req_detail, model.PROTO_OA_SYMBOL_BY_ID_RES)
+                    res_detail = oa.ProtoOASymbolByIdRes()
+                    res_detail.ParseFromString(msg_detail.payload)
+                    
+                    if res_detail.symbol:
+                        self.symbol_min_volume = res_detail.symbol[0].minVolume
+                        logger.info(f"🔍 Symbol {self.config.symbol_name} minVolume: {self.symbol_min_volume}")
                     break
         
         if not self.symbol_id:
