@@ -334,7 +334,7 @@ class TelegramNotifier:
                 return
 
             welcome_msg = (
-                "ð¤ <b>XAUUSD Trading Bot</b>\n\n"
+                "🤖 <b>XAUUSD Trading Bot</b>\n\n"
                 "Available commands:\n"
                 "/help - Show all commands\n"
                 "/status - Bot status\n"
@@ -344,18 +344,13 @@ class TelegramNotifier:
                 "/stats - Trading statistics\n"
                 "/signals - Signal analysis\n"
                 "/permission - Show current trading permission scope\n"
-                "/add_account &lt;id&gt; [description] - Add account\n"
-                "/verify_account &lt;id&gt; - Verify account\n"
-                "/remove_account &lt;id&gt; - Remove account\n"
-                "/list_accounts - List all accounts\n"
-                "/switch_account &lt;id&gt; - Switch to account\n"
                 "/mode &lt;live|demo&gt; - Switch environment mode\n"
                 "/reset_stats confirm - Reset statistics\n"
                 "/stop - Stop bot execution\n\n"
                 "All bot activity will be logged here automatically."
             )
             reply_keyboard = ReplyKeyboardMarkup(
-                [["/status", "/stop"], ["/help", "/list_accounts"]],
+                [["/status", "/stop"], ["/help"]],
                 resize_keyboard=True,
                 one_time_keyboard=False,
             )
@@ -369,7 +364,7 @@ class TelegramNotifier:
             self.logger.error(f"Error handling /start command: {e}")
             # Try to send a simple response even if there's an error
             try:
-                await update.message.reply_text("ð¤ Bot is active! Use /help for commands.")
+                await update.message.reply_text("🤖 Bot is active! Use /help for commands.")
             except Exception as e2:
                 self.logger.error(f"Failed to send fallback /start response: {e2}")
 
@@ -379,39 +374,34 @@ class TelegramNotifier:
             return
             
         help_msg = (
-            "ð <b>ScalpAI XAUUSD Trading Bot - Command Reference</b>\n\n"
-            "ð¤ <b>Getting Started:</b>\n"
+            "📚 <b>ScalpAI XAUUSD Trading Bot - Command Reference</b>\n\n"
+            "🤖 <b>Getting Started:</b>\n"
             "/start - Show welcome message and keyboard\n"
             "/help - Show this comprehensive help\n"
             "/status - Current bot status and account info\n\n"
-            "ð <b>Performance Monitoring:</b>\n"
+            "📊 <b>Performance Monitoring:</b>\n"
             "/kpis - Key performance indicators (signals, trades, P&L)\n"
             "/performance - Detailed trading performance\n"
             "/pnl - Profit & loss breakdown\n"
             "/stats - Trading statistics and AI metrics\n"
             "/signals - Signal generation analysis\n"
             "(Zero accepted trades means no signal passed the confidence threshold or an open position was already active.)\n\n"
-            "ð¤ <b>Account Management:</b>\n"
-            "/list_accounts - Show all configured accounts\n"
+            "👤 <b>Account Management:</b>\n"
             "/account - Show current trading account details\n"
             "/permission - Show current trading permission scope\n"
-            "/set_balance &lt;amount&gt; - Set initial account balance for tracking\n"
-            "/add_account &lt;id&gt; [description] - Add trading account\n"
-            "/verify_account &lt;id&gt; - Verify account connection\n"
-            "/remove_account &lt;id&gt; - Remove account from bot\n"
-            "/switch_account &lt;id&gt; - Switch to different account\n\n"
+            "/set_balance &lt;amount&gt; - Set initial account balance for tracking\n\n"
             "⚙️ <b>Bot Control:</b>\n"
             "/stop - Stop bot execution and Telegram polling\n"
             "/restart - Restart the bot (reconnect and resume trading)\n"
             "/mode &lt;live|demo&gt; - Switch between LIVE and DEMO environments\n"
             "/reset_stats confirm - Reset all performance statistics\n\n"
-            "ð¡ <b>How to Use:</b>\n"
-            "1. Add your cTrader account: /add_account 46801669\n"
-            "2. Verify connection: /verify_account 46801669\n"
-            "3. Monitor performance: /kpis, /status, /account\n"
+            "💡 <b>How to Use:</b>\n"
+            "1. Monitor performance: /kpis, /status, /account\n"
+            "2. Switch environments dynamically: /mode live or /mode demo\n"
+            "3. Ensure your tokens have permissions granted in cTrader!\n"
             "4. Control trading: /stop to halt operations\n\n"
-            "ð <b>Security:</b> Commands only work from authorized chat ID\n"
-            "ð± <b>Keyboard:</b> Use reply keyboard buttons for quick access"
+            "🔒 <b>Security:</b> Commands only work from authorized chat ID\n"
+            "📱 <b>Keyboard:</b> Use reply keyboard buttons for quick access"
         )
         await update.message.reply_text(help_msg, parse_mode=ParseMode.HTML)
     
