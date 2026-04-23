@@ -12,7 +12,6 @@ from executioner import OrderManager
 from performance import PerformanceTracker
 from openapi_pb2 import OpenApiMessages_pb2 as oa
 from openapi_pb2 import OpenApiModelMessages_pb2 as model
-from openapi_pb2 import OpenApiModelMessages_pb2 as model
 
 # Setup logging
 logging.basicConfig(
@@ -23,9 +22,12 @@ logger = logging.getLogger("Main")
 
 class HFTBot:
     def __init__(self):
+        import os
         self.config = Config()
         self.config.validate()
-        # Debug: Log tokens being used
+        logger.info("[DEBUG] HFTBot instance created. PID: %s", os.getpid())
+        logger.info(f"[DEBUG] Telegram Bot Token: {self.config.telegram_token}")
+        logger.info(f"[DEBUG] Telegram Chat ID: {self.config.telegram_chat_id}")
         logger.info(f"[DEBUG] Using CTRADER_ACCESS_TOKEN: {self.config.access_token}")
         logger.info(f"[DEBUG] Using CTRADER_REFRESH_TOKEN: {self.config.refresh_token}")
         # Core Components
@@ -33,67 +35,63 @@ class HFTBot:
             self.config.host, 
             self.config.port, 
             self.config.client_id, 
-            def __init__(self):
-                import os
-                self.config = Config()
-                self.config.validate()
-                logger.info("[DEBUG] HFTBot instance created. PID: %s", os.getpid())
-                logger.info(f"[DEBUG] Telegram Bot Token: {self.config.telegram_token}")
-                logger.info(f"[DEBUG] Telegram Chat ID: {self.config.telegram_chat_id}")
-                logger.info(f"[DEBUG] Using CTRADER_ACCESS_TOKEN: {self.config.access_token}")
-                logger.info(f"[DEBUG] Using CTRADER_REFRESH_TOKEN: {self.config.refresh_token}")
-                # Core Components
-                self.client = CTraderClient(
-                    self.config.host, 
-                    self.config.port, 
-                    self.config.client_id, 
-                    self.config.client_secret, 
-                    self.config.access_token,
-                    self.config.refresh_token
-                )
-                self.client.on_token_refreshed = self.save_new_tokens
-                self.tick_logger = TickLogger(self.config.csv_file)
-                self.notifier = TelegramNotifier(
-                    self.config.telegram_token, 
-                    self.config.telegram_chat_id, 
-                    self.config.telegram_enabled
-                )
-                self.notifier.ctrader_token = self.config.access_token
-                # HFT Logic Components
-                self.feature_factory = FeatureFactory(window_ms=1000)
-                self.brain = XGBoostGatekeeper(self.config.model_path, self.config.allow_mock_model)
-                self.performance = PerformanceTracker(
-                    notifier=self.notifier,
-                    audit_logger=self.tick_logger,
-                    live_mode=not self.config.dry_run,
-                    target_confidence=self.config.target_confidence,
-                )
-                # Set performance tracker for KPI access via Telegram
-                self.notifier.set_performance_tracker(self.performance)
-                self.notifier.stop_callback = self.stop
-                self.notifier.restart_callback = self.restart
-                self.notifier.mode_switch_callback = self.switch_mode
-                self.executioner = None # Init after account_id is known
-                self.can_trade = False
-                self.trade_permission_notice_sent = False
-                self.symbol_id = None
-                self.account_id = None
-                self.running = True
-                self.heartbeat_task = None
+            self.config.client_secret, 
+            self.config.access_token,
+            self.config.refresh_token
+        )
+        self.client.on_token_refreshed = self.save_new_tokens
+        self.tick_logger = TickLogger(self.config.csv_file)
+        self.notifier = TelegramNotifier(
+            self.config.telegram_token, 
+            self.config.telegram_chat_id, 
+            self.config.telegram_enabled
+        )
+        self.notifier.ctrader_token = self.config.access_token
+        # HFT Logic Components
+        self.feature_factory = FeatureFactory(window_ms=1000)
+        self.brain = XGBoostGatekeeper(self.config.model_path, self.config.allow_mock_model)
+        self.performance = PerformanceTracker(
+            notifier=self.notifier,
+            audit_logger=self.tick_logger,
+            live_mode=not self.config.dry_run,
+            target_confidence=self.config.target_confidence,
+        )
+        # Set performance tracker for KPI access via Telegram
+        self.notifier.set_performance_tracker(self.performance)
+        self.notifier.stop_callback = self.stop
+        self.notifier.restart_callback = self.restart
+        self.notifier.mode_switch_callback = self.switch_mode
+        self.executioner = None # Init after account_id is known
+        self.can_trade = False
+        self.trade_permission_notice_sent = False
+        self.symbol_id = None
+        self.account_id = None
+        self.running = True
+        self.heartbeat_task = None
 
-                log_level = getattr(logging, self.config.log_level.upper(), logging.INFO)
-                logging.getLogger().setLevel(log_level)
-                if self.notifier.enabled:
-                    handler = self.notifier.get_log_handler()
-                    handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-                    logging.getLogger().addHandler(handler)
-                    logger.info("Telegram logging enabled for all bot activity.")
-                    self.notifier.set_account_switch_callback(self.switch_account)
-                    self.notifier.set_mode_switch_callback(self.switch_mode)
-                    self.notifier.set_stop_callback(self.stop)
-                    self.notifier.set_restart_callback(self.restart)
-                    # Start Telegram command polling
-                    asyncio.create_task(self.notifier.start_polling())
+        log_level = getattr(logging, self.config.log_level.upper(), logging.INFO)
+        logging.getLogger().setLevel(log_level)
+        if self.notifier.enabled:
+            handler = self.notifier.get_log_handler()
+            handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+            logging.getLogger().addHandler(handler)
+            logger.info("Telegram logging enabled for all bot activity.")
+            self.notifier.set_account_switch_callback(self.switch_account)
+            self.notifier.set_mode_switch_callback(self.switch_mode)
+            self.notifier.set_stop_callback(self.stop)
+            self.notifier.set_restart_callback(self.restart)
+            # Start Telegram command polling
+            asyncio.create_task(self.notifier.start_polling())
+
+    async def on_spot_event(self, proto_msg):
+        event = oa.ProtoOASpotEvent()
+        event.ParseFromString(proto_msg.payload)
+        
+        bid = event.bid / 100000.0 if event.bid else 0.0
+        ask = event.ask / 100000.0 if event.ask else 0.0
+        server_time = event.timestamp if event.timestamp else int(time.time() * 1000)
+
+        try:
             if not bid or not ask:
                 return
 
@@ -382,7 +380,6 @@ class HFTBot:
             raise ValueError(f"Symbol {self.config.symbol_name} not found")
 
         # Subscribe to spots
-        self.client.add_callback(model.PROTO_OA_SPOT_EVENT, self.on_spot_event)
         self.client.add_callback(model.PROTO_OA_SPOT_EVENT, self.on_spot_event)
         req = oa.ProtoOASubscribeSpotsReq()
         req.ctidTraderAccountId = self.account_id

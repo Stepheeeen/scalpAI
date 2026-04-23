@@ -145,7 +145,6 @@ class CTraderClient:
         if payload_type == HEARTBEAT_EVENT:
             pass
         elif payload_type == model.PROTO_OA_ERROR_RES:
-        elif payload_type == model.PROTO_OA_ERROR_RES:
             err = oa.ProtoOAErrorRes()
             err.ParseFromString(proto_msg.payload)
             self.logger.error(f"API Error: {err.errorCode} - {err.description}")
