@@ -301,13 +301,21 @@ class HFTBot:
             await self.notifier.update_dashboard()
             
             while self.running and self.client.is_connected:
-                await asyncio.sleep(30)
+                # Sleep in small chunks so we can break early if disconnected (e.g. by mode switch)
+                for _ in range(30):
+                    if not self.running or not self.client.is_connected:
+                        break
+                    await asyncio.sleep(1)
+                
+                if not self.running or not self.client.is_connected:
+                    break
+                    
                 for acc in matched_accounts:
                     try:
                         await self.client.authenticate_account(acc.get("accountId"))
                         logger.info(f"✅ Authorization detected for {acc.get('accountId')}. Resuming...")
                         return await self.setup_session() 
-                    except:
+                    except Exception as e:
                         pass
             return
 
