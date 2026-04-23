@@ -230,13 +230,24 @@ class HFTBot:
 
     async def setup_session(self):
         await self.client.authenticate_application()
-        # Force token refresh before fetching account list
         try:
-            await self.client.refresh_token_call()
-            logger.info("[DEBUG] Forced token refresh before get_account_list.")
+            acc_list = await self.client.get_account_list()
         except Exception as e:
-            logger.error(f"[DEBUG] Forced token refresh failed: {e}")
-        acc_list = await self.client.get_account_list()
+            if "CH_ACCESS_TOKEN_INVALID" in str(e):
+                logger.warning("Access token invalid, attempting refresh...")
+                try:
+                    await self.client.refresh_token_call()
+                    acc_list = await self.client.get_account_list()
+                except Exception as refresh_err:
+                    logger.error(f"Token refresh failed: {refresh_err}")
+                    await self.notifier.send_message("🚨 <b>CRITICAL ERROR</b>: API Tokens Expired!\nPlease generate a new token and update your .env file.")
+                    if hasattr(self.notifier, 'bot_state'):
+                        self.notifier.bot_state = "🛑 Token Expired"
+                        await self.notifier.update_dashboard()
+                    self.stop()
+                    return
+            else:
+                raise
         
         # 1. Dashboard: List all available accounts
         logger.info("="*60)
