@@ -36,7 +36,6 @@ async def diagnose():
         "CTRADER_CLIENT_SECRET": os.getenv("CTRADER_CLIENT_SECRET"),
         "CTRADER_ACCESS_TOKEN": os.getenv("CTRADER_ACCESS_TOKEN"),
         "CTRADER_REFRESH_TOKEN": os.getenv("CTRADER_REFRESH_TOKEN"),
-        "CTRADER_ACCOUNT_ID": os.getenv("CTRADER_ACCOUNT_ID"),
         "BOT_ENVIRONMENT": os.getenv("BOT_ENVIRONMENT", "NOT SET (defaults to DEMO)"),
     }
     
@@ -143,17 +142,15 @@ async def diagnose():
     
     # Step 7: Test account authorization
     if accounts:
-        # Use configured account or first one
-        target_account = None
-        if config.account_id:
-            target_account = next(
-                (a for a in accounts if str(a.ctidTraderAccountId) == str(config.account_id)),
-                None
-            )
-            if not target_account:
-                logger.warning(f"  ⚠️ Configured account {config.account_id} not found in returned list!")
+        # Auto-select matching environment
+        env_is_live = (config.bot_env == "LIVE")
+        matched_accounts = [a for a in accounts if a.isLive == env_is_live]
+        
+        if matched_accounts:
+            target_account = matched_accounts[0]
         else:
             target_account = accounts[0]
+            logger.warning(f"  ⚠️ No exact match for Env {config.bot_env}. Falling back to first account.")
         
         logger.info(f"\n[STEP 7] Testing account authorization...")
         logger.info(f"  Testing account: {target_account.ctidTraderAccountId}")

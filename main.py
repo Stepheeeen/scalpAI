@@ -231,13 +231,14 @@ class HFTBot:
     async def setup_session(self):
         await self.client.authenticate_application()
         try:
-            acc_list = await self.client.get_account_list()
+            rest_accounts = await self.client.fetch_accounts_rest()
         except Exception as e:
-            if "CH_ACCESS_TOKEN_INVALID" in str(e):
+            logger.error(f"Failed to fetch accounts via REST API: {e}")
+            if "401" in str(e) or "Unauthorized" in str(e):
                 logger.warning("Access token invalid, attempting refresh...")
                 try:
                     await self.client.refresh_token_call()
-                    acc_list = await self.client.get_account_list()
+                    rest_accounts = await self.client.fetch_accounts_rest()
                 except Exception as refresh_err:
                     logger.error(f"Token refresh failed: {refresh_err}")
                     await self.notifier.send_message("🚨 <b>CRITICAL ERROR</b>: API Tokens Expired!\nPlease generate a new token and update your .env file.")
@@ -256,112 +257,73 @@ class HFTBot:
         logger.info(f"{'ID':<12} | {'TYPE':<6} | {'BROKER':<15} | {'BALANCE':<12}")
         logger.info("-" * 60)
         
-        authorized_accounts = []
-        target_account = None
-        
-        for acc in acc_list.ctidTraderAccount:
-            try:
-                t_resp = await self.client.get_trader_info(acc.ctidTraderAccountId)
-                t = t_resp.trader
-                m_digits = t.moneyDigits if hasattr(t, 'moneyDigits') else 0
-                bal = t.balance / (10 ** m_digits)
-                acc_type = "LIVE" if acc.isLive else "DEMO"
-                broker = t.brokerName if hasattr(t, 'brokerName') else 'Unknown'
-                
-                logger.info(f"{acc.ctidTraderAccountId:<12} | {acc_type:<6} | {broker[:15]:<15} | ${bal:,.2f}")
-                authorized_accounts.append({
-                    "id": acc.ctidTraderAccountId,
-                    "type": acc_type,
-                    "account": acc,
-                    "trader": t
-                })
-                
-                # Auto-select logic
-                if self.config.account_id and int(self.config.account_id) == acc.ctidTraderAccountId:
-                    target_account = acc
-            except Exception as e:
-                if "not authorized" in str(e).lower():
-                    logger.warning(f"🔒 Account {acc.ctidTraderAccountId} found but NOT AUTHORIZED. Check cTrader dashboard.")
-                else:
-                    logger.debug(f"Could not fetch info for acc {acc.ctidTraderAccountId}: {e}")
+        env_is_live = (self.config.bot_env == "LIVE")
+        matched_accounts = [acc for acc in rest_accounts if acc.get("live", False) == env_is_live]
+        matched_accounts.sort(key=lambda x: x.get("balance", 0), reverse=True)
 
+        for acc in rest_accounts:
+            acc_type = "LIVE" if acc.get("live", False) else "DEMO"
+            broker = acc.get("brokerName", "Unknown")
+            bal = acc.get("balance", 0) / (10 ** acc.get("moneyDigits", 2))
+            logger.info(f"{str(acc.get('accountId')):<12} | {acc_type:<6} | {broker[:15]:<15} | ${bal:,.2f}")
+            
         logger.info("="*60)
 
-        # 2. Final Selection Strategy
-        final_acc = None
-        if target_account:
-            final_acc = target_account
-            self.account_id = final_acc.ctidTraderAccountId
-        elif not authorized_accounts:
-            # DORMANT MODE: Wait for user to authorize an account
-            logger.error("❌ NO AUTHORIZED ACCOUNTS FOUND. Entering Dormant Mode...")
+        # 2. Sequential Authorization Attempt
+        authorized_account_id = None
+        for acc in matched_accounts:
+            acc_id = acc.get("accountId")
+            try:
+                await self.client.authenticate_account(acc_id)
+                t_resp = await self.client.get_trader_info(acc_id)
+                authorized_account_id = acc_id
+                self.account_id = acc_id
+                
+                if not getattr(t_resp.trader, 'canTrade', False):
+                    logger.warning(f"⚠️ Selected account {acc_id} has VIEW-ONLY access.")
+                    self.can_trade = False
+                else:
+                    self.can_trade = True
+                    
+                logger.info(f"✅ Auto-selected authorized {self.config.bot_env} account: {acc_id}")
+                break
+            except Exception as e:
+                if "not authorized" in str(e).lower() or "not_found" in str(e).lower():
+                    logger.warning(f"🔒 Account {acc_id} NOT AUTHORIZED on Web Dashboard.")
+                else:
+                    logger.debug(f"Could not auth account {acc_id}: {e}")
+
+        # 3. Handle No Authorized Accounts (Dormant Mode)
+        if not authorized_account_id:
+            logger.error(f"❌ NO AUTHORIZED {self.config.bot_env} ACCOUNTS FOUND. Entering Dormant Mode...")
             self.notifier.is_authorized = False
             self.notifier.bot_state = "🛑 Account Locked"
             await self.notifier.update_dashboard()
             
-            while self.running and not authorized_accounts and self.client.is_connected:
-                await asyncio.sleep(30) # Poll every 30s
-                # Re-check account list effectively
-                try:
-                    acc_list = await self.client.get_account_list()
-                    for acc in acc_list.ctidTraderAccount:
-                        try:
-                            await self.client.get_trader_info(acc.ctidTraderAccountId)
-                            # If we get here, it's authorized!
-                            logger.info(f"✅ Authorization detected for {acc.ctidTraderAccountId}. Resuming...")
-                            # Trigger a restart of the session setup
-                            return await self.setup_session() 
-                        except:
-                            continue
-                except:
-                    pass
+            while self.running and self.client.is_connected:
+                await asyncio.sleep(30)
+                for acc in matched_accounts:
+                    try:
+                        await self.client.authenticate_account(acc.get("accountId"))
+                        logger.info(f"✅ Authorization detected for {acc.get('accountId')}. Resuming...")
+                        return await self.setup_session() 
+                    except:
+                        pass
             return
-            
-        else:
-            # Selection priority: matching env, then any authorized
-            env_matches = [a for a in authorized_accounts if a["type"] == self.config.bot_env]
-            if env_matches:
-                final_acc = env_matches[0]["account"]
-                logger.info(f"✅ Auto-selected {self.config.bot_env} account: {final_acc.ctidTraderAccountId}")
-            else:
-                final_acc = authorized_accounts[0]["account"]
-                logger.warning(f"⚠️ No exact match for Env {self.config.bot_env}. Falling back to Authorized Account: {final_acc.ctidTraderAccountId}")
-            
-            self.account_id = final_acc.ctidTraderAccountId
 
-        await self.client.authenticate_account(self.account_id)
-        
-        # Verify mode vs intended environment
-        is_live = any(a.isLive for a in acc_list.ctidTraderAccount if a.ctidTraderAccountId == self.account_id)
-        current_mode = "LIVE" if is_live else "DEMO"
-        
-        if self.config.bot_env != current_mode:
-            if self.config.bot_env == "LIVE" and current_mode == "DEMO":
-                 logger.warning(f"⚠️ Account {self.config.account_id} not available or authorized. Entering Safety Demo Mode.")
-                 self.notifier.is_authorized = False
-                 await self.notifier.send_message(
-                     "🛡️ <b>Safety Demo Mode Activated</b>\n"
-                     "Your Live account is not authorized for trading.\n\n"
-                     "Fix permissions via the 🛠️ <b>Fix Permissions</b> button in /menu, then restart the bot."
-                 )
-            elif self.config.bot_env == "DEMO" and current_mode == "LIVE":
-                 logger.critical("FORCING STOP: Tried to run DEMO logic on LIVE account!")
-                 await self.notifier.send_message("🛑 <b>STOPPED</b>: Safety trigger. Tried to run DEMO on LIVE account.")
-                 self.stop()
-                 return
-        else:
-            self.notifier.is_authorized = True
-
-        # Initialize Performance and Executioner
+        # We already authenticated the account and set self.account_id
+        # We also got trader info in the loop above to check permissions
         trader_resp = await self.client.get_trader_info(self.account_id)
         trader_info = trader_resp.trader
+        
         m_digits = trader_info.moneyDigits if hasattr(trader_info, 'moneyDigits') else 0
         balance = trader_info.balance / (10 ** m_digits)
-        self.performance.set_initial_balance(balance)
-        self.performance.live_mode = is_live
         
-        # Check actual trading permission
-        self.can_trade = getattr(trader_info, 'canTrade', False)
+        # Since we filtered by env_is_live, we know current_mode == self.config.bot_env
+        self.performance.set_initial_balance(balance)
+        self.performance.live_mode = (self.config.bot_env == "LIVE")
+        self.notifier.is_authorized = True
+        
         perm_scope = "FULL (Trade + View)" if self.can_trade else "VIEW ONLY"
         
         broker = trader_info.brokerName if hasattr(trader_info, 'brokerName') else 'Unknown'

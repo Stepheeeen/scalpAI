@@ -15,7 +15,6 @@ class Config:
         self.client_secret = os.getenv("CTRADER_CLIENT_SECRET")
         self.access_token = os.getenv("CTRADER_ACCESS_TOKEN")
         self.refresh_token = os.getenv("CTRADER_REFRESH_TOKEN")
-        self.account_id = os.getenv("CTRADER_ACCOUNT_ID")
         self.bot_env = os.getenv("BOT_ENVIRONMENT", "DEMO").upper() # LIVE or DEMO
 
         

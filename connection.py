@@ -3,6 +3,7 @@ import struct
 import websockets
 import time
 import logging
+import httpx
 from typing import Dict, Optional, Callable, List
 from google.protobuf.message import Message
 from openapi_pb2 import OpenApiCommonMessages_pb2 as common
@@ -240,6 +241,17 @@ class CTraderClient:
                 self.callbacks[COMMON_ERROR_RES].remove(common_error_callback)
             except Exception as e:
                 self.logger.debug(f"Error cleaning up callbacks: {e}")
+
+    async def fetch_accounts_rest(self):
+        """Fetch all linked trading accounts via Spotware REST API"""
+        url = f"https://api.spotware.com/connect/tradingaccounts?access_token={self.access_token}"
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            data = resp.json()
+            if "data" not in data:
+                raise ValueError("Unexpected REST API response format")
+            return data["data"]
 
     async def authenticate_application(self):
         req = oa.ProtoOAApplicationAuthReq()
