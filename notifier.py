@@ -167,6 +167,8 @@ class TelegramNotifier:
         self.bot_start_time = datetime.datetime.now()
         self.current_account_id = None
         self.current_account_balance = 0.0
+        self.current_account_equity = 0.0
+        self.current_account_free_margin = 0.0
         self.current_account_type = "None"
         self.bot_state = "🟡 Starting" # 🟡 Starting, 🟢 Trading, ⏳ Reconnecting..., 🛑 Stopped, ⚠️ Warning
         
@@ -437,7 +439,9 @@ class TelegramNotifier:
             f"Account Type: {account_type}\n"
             f"Permission Scope: {self.current_account_permission_scope}\n"
             f"Status: {status}\n"
-            f"Balance: {balance_info}\n\n"
+            f"Balance: {balance_info}\n"
+            f"Equity: ${self.current_account_equity:.2f}\n"
+            f"Free Margin: <b>${self.current_account_free_margin:.2f}</b>\n\n"
             "ℹ️ This is the account the bot will use for trading when a signal is accepted.\n"
             "Use /set_balance &lt;amount&gt; to set your initial account balance for tracking."
         )
@@ -545,6 +549,8 @@ class TelegramNotifier:
         broker: str = "Unknown",
         login: str = "Unknown",
         balance: float = None,
+        equity: float = None,
+        free_margin: float = None,
         permission_scope: str = "Unknown",
     ):
         """Set current trading account information"""
@@ -553,6 +559,8 @@ class TelegramNotifier:
         self.current_account_broker = broker
         self.current_account_login = login
         self.current_account_balance = balance
+        self.current_account_equity = equity if equity is not None else balance
+        self.current_account_free_margin = free_margin if free_margin is not None else balance
         self.current_account_permission_scope = permission_scope
 
     async def _cmd_add_account(self, update, context):

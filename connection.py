@@ -347,6 +347,15 @@ class CTraderClient:
         res.ParseFromString(msg.payload)
         return res
 
+    async def reconcile_account(self, account_id: int):
+        """Fetch open positions and current margin info"""
+        req = oa.ProtoOAReconcileReq()
+        req.ctidTraderAccountId = account_id
+        msg = await self.request(req, model.PROTO_OA_RECONCILE_RES)
+        res = oa.ProtoOAReconcileRes()
+        res.ParseFromString(msg.payload)
+        return res
+
     async def get_symbols_list(self, account_id: int):
         req = oa.ProtoOASymbolsListReq()
         req.ctidTraderAccountId = account_id

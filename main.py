@@ -323,6 +323,8 @@ class HFTBot:
 
         # We already authenticated the account and set self.account_id
         # We also got trader info in the loop above to check permissions
+        # Reconciliation and Balance check
+        recon = await self.client.reconcile_account(self.account_id)
         trader_resp = await self.client.get_trader_info(self.account_id)
         trader_info = trader_resp.trader
         
@@ -345,10 +347,24 @@ class HFTBot:
             broker,
             login,
             balance=balance,
+            equity=balance, # Balance is fallback
+            free_margin=balance, # Balance is fallback
             permission_scope=perm_scope
         )
 
         self.executioner = OrderManager(self.client, self.notifier, self.account_id, self.performance)
+        
+        # Load existing positions into executioner
+        for pos in recon.position:
+            self.executioner.positions[pos.positionId] = {
+                "entry_price": pos.entryPrice,
+                "side": "BUY" if pos.tradeData.tradeSide == model.BUY else "SELL",
+                "has_be_set": False, # Assuming BE not set yet
+                "symbol_id": pos.tradeData.symbolId
+            }
+        if self.performance:
+            self.performance.open_positions = len(self.executioner.positions)
+            
         self.client.add_callback(model.PROTO_OA_EXECUTION_EVENT, self.executioner.handle_execution_event)
 
         if not self.symbol_id:
