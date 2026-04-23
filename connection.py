@@ -147,11 +147,11 @@ class CTraderClient:
         elif payload_type == model.PROTO_OA_ERROR_RES:
             err = oa.ProtoOAErrorRes()
             err.ParseFromString(proto_msg.payload)
-            self.logger.error(f"API Error: {err.errorCode} - {err.description}")
+            self.logger.debug(f"API Error: {err.errorCode} - {err.description}")
         elif payload_type == COMMON_ERROR_RES:
             err = common.ProtoErrorRes()
             err.ParseFromString(proto_msg.payload)
-            self.logger.error(f"Common Error: {err.errorCode} - {err.description}")
+            self.logger.debug(f"Common Error: {err.errorCode} - {err.description}")
 
     async def _heartbeat_loop(self):
         try:
@@ -178,8 +178,6 @@ class CTraderClient:
         req = oa.ProtoOANewOrderReq()
         req.ctidTraderAccountId = account_id
         req.symbolId = symbol_id
-        req.orderType = model.MARKET
-        req.tradeSide = model.BUY if side.upper() == "BUY" else model.SELL
         req.orderType = model.MARKET
         req.tradeSide = model.BUY if side.upper() == "BUY" else model.SELL
         req.volume = volume # In 0.01 units
@@ -229,7 +227,7 @@ class CTraderClient:
             self.logger.error(f"❌ Request timeout: {type(req).__name__}")
             raise
         except Exception as e:
-            self.logger.error(f"❌ Request failed: {type(req).__name__} - {e}")
+            self.logger.debug(f"Request failed: {type(req).__name__} - {e}")
             raise
         finally:
             try:
