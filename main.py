@@ -331,7 +331,7 @@ class HFTBot:
         
         self.notifier.set_account_info(
             self.account_id,
-            current_mode,
+            self.config.bot_env,
             broker,
             login,
             balance=balance,
