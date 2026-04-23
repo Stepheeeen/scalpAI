@@ -177,9 +177,10 @@ class HFTBot:
                 logger.error(f"❌ Execution Error: {e}")
                 await self.notifier.notify_error(f"Order Execution Failed: {e}")
 
-            # 5. Manage Existing Trades (Break-Even)
+            # 5. Manage Existing Trades (Break-Even & Exits)
             if self.executioner.positions:
                 await self.executioner.check_break_even(self.symbol_id, bid, ask)
+                await self.executioner.check_exits(self.symbol_id, bid, ask)
 
             # 6. Periodic Healthy Log
             if latency > 100:

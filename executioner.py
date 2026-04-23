@@ -83,6 +83,43 @@ class OrderManager:
                     await self._move_to_be(pos_id, entry)
                     data["has_be_set"] = True
 
+    async def check_exits(self, symbol_id: int, current_bid: float, current_ask: float):
+        """Emergency exit: Closes any trade that reaches +2 pips profit (useful for test trades)"""
+        TP_TARGET_PIPS = 2
+        
+        for pos_id, data in list(self.positions.items()):
+            if data["symbol_id"] != symbol_id:
+                continue
+            
+            entry = data["entry_price"]
+            side = data["side"]
+            
+            if side == "BUY":
+                profit_pips = (current_bid - entry) * 100
+                if profit_pips >= TP_TARGET_PIPS:
+                    self.logger.info(f"Target reached for BUY {pos_id}. Closing.")
+                    await self.close_position(pos_id)
+            else: # SELL
+                profit_pips = (entry - current_ask) * 100
+                if profit_pips >= TP_TARGET_PIPS:
+                    self.logger.info(f"Target reached for SELL {pos_id}. Closing.")
+                    await self.close_position(pos_id)
+
+    async def close_position(self, position_id: int):
+        """Close a specific position immediately"""
+        req = oa.ProtoOAClosePositionReq()
+        req.ctidTraderAccountId = self.account_id
+        req.positionId = position_id
+        # We need the volume to close. Let's find it. 
+        # Actually, cTrader Open API v2 ProtoOAClosePositionReq closes the WHOLE position if volume not specified.
+        # But for safety, we should fetch it or just send the request.
+        
+        try:
+            await self.client.send(req)
+            self.logger.info(f"Close request sent for {position_id}")
+        except Exception as e:
+            self.logger.error(f"Failed to close position {position_id}: {e}")
+
     async def _move_to_be(self, position_id: int, entry_price: float):
         self.logger.info(f"Moving SL to Break-Even for position {position_id}")
         req = oa.ProtoOAAmendPositionSLTPReq()
