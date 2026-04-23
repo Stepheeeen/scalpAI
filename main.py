@@ -60,7 +60,6 @@ class HFTBot:
         self.notifier.set_performance_tracker(self.performance)
         self.notifier.stop_callback = self.stop
         self.notifier.restart_callback = self.restart
-        self.notifier.mode_switch_callback = self.switch_mode
         self.executioner = None # Init after account_id is known
         self.can_trade = False
         self.trade_permission_notice_sent = False
