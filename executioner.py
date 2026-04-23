@@ -34,6 +34,8 @@ class OrderManager:
                 
                 if pos.positionId in self.positions:
                     del self.positions[pos.positionId]
+                    if self.performance:
+                        self.performance.open_positions = len(self.positions)
                     self.logger.info(f"Position {pos.positionId} removed from tracking.")
                 
                 await self.notifier.send_message(
@@ -49,6 +51,8 @@ class OrderManager:
                     "has_be_set": False,
                     "symbol_id": pos.symbolId
                 }
+                if self.performance:
+                    self.performance.open_positions = len(self.positions)
                 self.logger.info(f"Position {pos.positionId} opened at {deal.executionPrice}")
                 await self.notifier.notify_trade(
                     "BUY" if deal.tradeSide == model.BUY else "SELL", 
