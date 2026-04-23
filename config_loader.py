@@ -24,7 +24,10 @@ class Config:
         self.telegram_enabled = self.raw.get("telegram", {}).get("enabled", False)
 
         # API settings
-        self.host = self.raw["ctrader"]["host"]
+        if self.bot_env == "LIVE":
+            self.host = "live.ctraderapi.com"
+        else:
+            self.host = "demo.ctraderapi.com"
         self.port = self.raw["ctrader"]["port"]
         strategy = self.raw.get("strategy", {})
         self.symbol_name = strategy.get("symbol_name", "XAUUSD")
