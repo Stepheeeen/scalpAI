@@ -277,8 +277,11 @@ class HFTBot:
                 authorized_account_id = acc_id
                 self.account_id = acc_id
                 
-                if not getattr(t_resp.trader, 'canTrade', False):
-                    logger.warning(f"⚠️ Selected account {acc_id} has VIEW-ONLY access.")
+                # cTrader Open API uses accessRights enum, not a canTrade boolean
+                is_full_access = (t_resp.trader.accessRights == model.FULL_ACCESS)
+                
+                if not is_full_access:
+                    logger.warning(f"⚠️ Selected account {acc_id} has restricted access: {t_resp.trader.accessRights}")
                     self.can_trade = False
                 else:
                     self.can_trade = True
