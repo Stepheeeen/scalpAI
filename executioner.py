@@ -59,7 +59,7 @@ class OrderManager:
                     "entry_price": deal.executionPrice,
                     "side": "BUY" if deal.tradeSide == model.BUY else "SELL",
                     "has_be_set": False,
-                    "symbol_id": pos.symbolId
+                    "symbol_id": deal.symbolId
                 }
                 if self.performance:
                     self.performance.open_positions = len(self.positions)
