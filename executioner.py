@@ -16,13 +16,23 @@ class OrderManager:
         event.ParseFromString(proto_msg.payload)
         
         execution_type = event.executionType
+        self.logger.info(f"🔔 Execution Event: {execution_type}")
         
         if execution_type == model.ORDER_FILLED:
             pos = event.position
             deal = event.deal
             
+            if not deal:
+                self.logger.warning("⚠️ ORDER_FILLED event received but no deal info present.")
+                return
+
+            self.logger.info(f"✅ Deal: ID={deal.dealId} PosID={pos.positionId} ClosingID={getattr(deal, 'closingDealId', 'None')}")
+            
             # 1. Check if it's an OPEN or CLOSE
-            if deal.closingDealId: # This is a closing deal
+            # Use hasattr because some proto versions might not have the field if it's empty
+            is_closing = hasattr(deal, 'closingDealId') and deal.closingDealId
+            
+            if is_closing: # This is a closing deal
                 # Calculate PnL and Commission
                 pnl = deal.realizedPnL / 100.0 if hasattr(deal, 'realizedPnL') else 0.0
                 comm = deal.commission / 100.0 if hasattr(deal, 'commission') else 0.0
@@ -73,37 +83,15 @@ class OrderManager:
             
             # Gold 1 pip = 0.01. 5 pips = 0.05
             if side == "BUY":
-                profit_pips = (current_bid - entry) * 100
+                profit_pips = (current_bid - entry) * 10
                 if profit_pips >= BE_THRESHOLD_PIPS:
                     await self._move_to_be(pos_id, entry)
                     data["has_be_set"] = True
             else: # SELL
-                profit_pips = (entry - current_ask) * 100
+                profit_pips = (entry - current_ask) * 10
                 if profit_pips >= BE_THRESHOLD_PIPS:
                     await self._move_to_be(pos_id, entry)
                     data["has_be_set"] = True
-
-    async def check_exits(self, symbol_id: int, current_bid: float, current_ask: float):
-        """Emergency exit: Closes any trade that reaches +2 pips profit (useful for test trades)"""
-        TP_TARGET_PIPS = 2
-        
-        for pos_id, data in list(self.positions.items()):
-            if data["symbol_id"] != symbol_id:
-                continue
-            
-            entry = data["entry_price"]
-            side = data["side"]
-            
-            if side == "BUY":
-                profit_pips = (current_bid - entry) * 100
-                if profit_pips >= TP_TARGET_PIPS:
-                    self.logger.info(f"Target reached for BUY {pos_id}. Closing.")
-                    await self.close_position(pos_id)
-            else: # SELL
-                profit_pips = (entry - current_ask) * 100
-                if profit_pips >= TP_TARGET_PIPS:
-                    self.logger.info(f"Target reached for SELL {pos_id}. Closing.")
-                    await self.close_position(pos_id)
 
     async def close_position(self, position_id: int):
         """Close a specific position immediately"""

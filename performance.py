@@ -91,6 +91,13 @@ class PerformanceTracker:
             self.losses += 1
             
         self.logger.info(f"📈 Trade logged: PnL=${pnl:,.2f}, Total Session PnL=${self.net_pnl:,.2f}")
+        if self.audit_logger:
+            self.audit_logger.log_audit("TRADE_CLOSED", {
+                "pnl": pnl,
+                "commission": commission,
+                "net_pnl": self.net_pnl,
+                "trades_count": self.trades_count
+            })
         self._save_stats()
         
         # Check targets

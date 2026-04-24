@@ -187,13 +187,13 @@ class CTraderClient:
         req.tradeSide = model.BUY if side.upper() == "BUY" else model.SELL
         req.volume = volume # In 0.01 units
         
-        # 1 pip for Gold = 0.01. 
-        # relativeStopLoss is in 1/100000 of unit of price.
-        # So 1 pip = 0.01 * 100,000 = 1000 units in protocol.
+        # 1 pip for Gold in user's app = 0.10. 
+        # cTrader API expects pips in smallest digit (0.01).
+        # So 1 app-pip = 10 API-pips.
         if sl_pips:
-            req.relativeStopLoss = sl_pips * 1000
+            req.relativeStopLoss = sl_pips * 10
         if tp_pips:
-            req.relativeTakeProfit = tp_pips * 1000
+            req.relativeTakeProfit = tp_pips * 10
             
         client_msg_id = f"ord_{int(time.time()*1000)}"
         self.logger.debug(f"Placing {side} order: {volume}u SL={sl_pips} TP={tp_pips} ID={client_msg_id}")

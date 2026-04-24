@@ -734,7 +734,7 @@ class TelegramNotifier:
             return
             
         kpis_msg = (
-            "ð <b>Key Performance Indicators</b>\n\n"
+            "📈 <b>Key Performance Indicators</b>\n\n"
             f"ð¯ <b>Signals:</b> {self.performance_tracker.signals_total}\n"
             f"✅ Accepted: {self.performance_tracker.signals_accepted}\n"
             f"❌ Rejected: {self.performance_tracker.signals_rejected}\n\n"
