@@ -188,12 +188,12 @@ class CTraderClient:
         req.volume = volume # In 0.01 units
         
         # 1 pip for Gold in user's app = 0.10. 
-        # cTrader API expects pips in smallest digit (0.01).
-        # So 1 app-pip = 10 API-pips.
+        # cTrader API expects pips in 1/100,000 of a price unit.
+        # To get $0.10 (1 pip), we need 10,000 units.
         if sl_pips:
-            req.relativeStopLoss = sl_pips * 10
+            req.relativeStopLoss = sl_pips * 10000
         if tp_pips:
-            req.relativeTakeProfit = tp_pips * 10
+            req.relativeTakeProfit = tp_pips * 10000
             
         client_msg_id = f"ord_{int(time.time()*1000)}"
         self.logger.debug(f"Placing {side} order: {volume}u SL={sl_pips} TP={tp_pips} ID={client_msg_id}")
