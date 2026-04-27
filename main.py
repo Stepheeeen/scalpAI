@@ -165,7 +165,7 @@ class HFTBot:
             # Calculate dynamic volume
             trade_volume = self.symbol_min_volume
             if getattr(self.config, 'dynamic_sizing', False):
-                balance = self.performance.current_balance
+                balance = self.performance.get_current_balance()
                 if balance > 0:
                     # Scale based on $100 balance and risk percentage. 
                     # Assuming 1 min_volume is appropriate for a $100 account at 2% risk.
