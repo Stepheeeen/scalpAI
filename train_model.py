@@ -7,8 +7,8 @@ import os
 # Configuration
 INPUT_FILE = "live_gold_data.csv"
 MODEL_OUTPUT = "xgboost_gold_model.json"
-TARGET_PIPS = 10 # We want to predict a 10-pip move
-LOOKAHEAD_TICKS = 20 # ...within the next 20 ticks
+TARGET_PIPS = 50 # We want to predict a 50-pip move for 10x growth
+LOOKAHEAD_TICKS = 100 # ...within the next 100 ticks
 
 def generate_labels(df):
     """Generates 1 for BUY, 2 for SELL, 0 for NONE based on future price moves."""
@@ -20,7 +20,7 @@ def generate_labels(df):
         current_price = df['mid'].iloc[i]
         future_prices = df['mid'].iloc[i+1 : i+LOOKAHEAD_TICKS+1]
         
-        # Gold 1 pip = 0.01. 10 pips = 0.10
+        # Gold 1 pip = 0.01. 50 pips = 0.50
         max_move_up = future_prices.max() - current_price
         max_move_down = current_price - future_prices.min()
         
@@ -68,8 +68,8 @@ def train():
 
     print(f"Training XGBoost on {len(X)} samples...")
     model = xgb.XGBClassifier(
-        n_estimators=150,
-        max_depth=5,
+        n_estimators=300, # Increased for larger dataset
+        max_depth=7,      # Increased depth for complex patterns
         learning_rate=0.05,
         objective='multi:softprob',
         num_class=3,

@@ -41,6 +41,8 @@ class Config:
         self.risk_auto_break_even_pips = risk.get("auto_break_even_pips", 5)
         self.daily_target = risk.get("daily_profit_target", 100) # USD
         self.max_loss = risk.get("max_daily_loss", 50) # USD
+        self.dynamic_sizing = risk.get("dynamic_sizing", False)
+        self.risk_per_trade_pct = risk.get("risk_per_trade_pct", 5.0)
 
         # Logging
         logging_cfg = self.raw.get("logging", {})

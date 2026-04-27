@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
-def generate_synthetic_gold_data(num_samples=1000):
-    """Generate realistic synthetic gold price data for training."""
+def generate_synthetic_gold_data(num_samples=100000):
+    """Generate realistic synthetic gold price data for training with aggressive trends."""
     np.random.seed(42)
     
     # Starting prices for gold (XAUUSD)
@@ -17,9 +17,13 @@ def generate_synthetic_gold_data(num_samples=1000):
     
     # Generate bid/ask with realistic spread and movement
     prices = [base_price]
+    momentum = 0.0
     for i in range(num_samples - 1):
-        # Random walk with mean reversion
-        drift = np.random.normal(0, 0.005)
+        # Periodically shift momentum to create large tradable swings (50+ pips)
+        if i % 1000 == 0:
+            momentum = np.random.normal(0, 0.05)
+            
+        drift = np.random.normal(0, 0.005) + momentum
         noise = np.random.normal(0, 0.02)
         prices.append(prices[-1] + drift + noise)
     
@@ -53,7 +57,7 @@ def generate_synthetic_gold_data(num_samples=1000):
 
 if __name__ == "__main__":
     print("Generating synthetic gold price data...")
-    df = generate_synthetic_gold_data(1000)
+    df = generate_synthetic_gold_data(100000)
     df.to_csv("live_gold_data.csv", index=False)
     print(f"✅ Generated {len(df)} synthetic data points")
     print(f"Sample data:\n{df.head()}")

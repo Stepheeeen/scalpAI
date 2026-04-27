@@ -162,13 +162,28 @@ class HFTBot:
                     )
                 return
 
+            # Calculate dynamic volume
+            trade_volume = self.symbol_min_volume
+            if getattr(self.config, 'dynamic_sizing', False):
+                balance = self.performance.current_balance
+                if balance > 0:
+                    # Scale based on $100 balance and risk percentage. 
+                    # Assuming 1 min_volume is appropriate for a $100 account at 2% risk.
+                    scaling_factor = (balance / 100.0) * (self.config.risk_per_trade_pct / 2.0)
+                    scaling_factor = max(1.0, scaling_factor)
+                    trade_volume = int(self.symbol_min_volume * scaling_factor)
+                    # Snap to step volume (min_volume)
+                    trade_volume = trade_volume - (trade_volume % self.symbol_min_volume)
+                    if trade_volume < self.symbol_min_volume:
+                        trade_volume = self.symbol_min_volume
+            
             self.performance.record_trade_attempt(side, 100, self.symbol_id, "placed")
             try:
                 await self.client.place_market_order(
                     self.account_id,
                     self.symbol_id,
                     side,
-                    volume=self.symbol_min_volume,
+                    volume=trade_volume,
                     sl_pips=self.config.risk_stop_loss_pips,
                     tp_pips=self.config.risk_take_profit_pips
                 )

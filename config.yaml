@@ -15,10 +15,12 @@ strategy:
   
 # Risk Management (Placeholder for Step 4)
 risk:
-  max_drawdown_pct: 1.0
-  stop_loss_pips: 15
-  take_profit_pips: 25
-  auto_break_even_pips: 5
+  max_drawdown_pct: 10.0 # Increased risk
+  stop_loss_pips: 20
+  take_profit_pips: 50
+  auto_break_even_pips: 15
+  dynamic_sizing: true
+  risk_per_trade_pct: 5.0
 
 # Telegram Settings
 telegram:
