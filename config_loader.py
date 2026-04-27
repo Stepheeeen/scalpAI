@@ -43,6 +43,7 @@ class Config:
         self.max_loss = risk.get("max_daily_loss", 50) # USD
         self.dynamic_sizing = risk.get("dynamic_sizing", False)
         self.risk_per_trade_pct = risk.get("risk_per_trade_pct", 5.0)
+        self.max_positions = risk.get("max_positions", 1)
 
         # Logging
         logging_cfg = self.raw.get("logging", {})

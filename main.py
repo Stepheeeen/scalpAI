@@ -69,6 +69,7 @@ class HFTBot:
         self.account_id = None
         self.running = True
         self.heartbeat_task = None
+        self.last_trade_time = 0 # Cooldown for multiple positions
 
         log_level = getattr(logging, self.config.log_level.upper(), logging.INFO)
         logging.getLogger().setLevel(log_level)
@@ -129,15 +130,39 @@ class HFTBot:
                 return
 
             signal_type, confidence = self.brain.get_signal(features)
-            accepted_signal = signal_type != 0 and confidence >= self.config.target_confidence and not self.executioner.positions
+            
+            # Position Limit Logic
+            num_positions = len(self.executioner.positions)
+            can_add_position = num_positions < self.config.max_positions
+            
+            # Cooldown check (60 seconds between any trade)
+            current_time = time.time()
+            cooldown_active = (current_time - self.last_trade_time) < 60
+            
+            accepted_signal = (
+                signal_type != 0 and 
+                confidence >= self.config.target_confidence and 
+                can_add_position and 
+                not cooldown_active
+            )
+            
+            # Check Daily Limits before any trade entry
+            if self.performance.is_daily_limit_reached():
+                logger.warning("Daily profit/loss limit reached. Skipping signal.")
+                return
+
             self.performance.record_signal(signal_type, confidence, features, accepted_signal)
 
             if signal_type == 0 or confidence < self.config.target_confidence:
                 logger.debug(f"Signal rejected: type={signal_type} confidence={confidence:.3f}")
                 return
 
-            if self.executioner.positions:
-                logger.debug("Signal ignored: position already open")
+            if not can_add_position:
+                logger.debug(f"Signal ignored: Max positions ({self.config.max_positions}) reached.")
+                return
+                
+            if cooldown_active:
+                logger.debug(f"Signal ignored: Cooldown active (last trade < 60s ago).")
                 return
 
             side = "BUY" if signal_type == 1 else "SELL"
@@ -162,22 +187,25 @@ class HFTBot:
                     )
                 return
 
-            # Calculate dynamic volume
+            # Calculate dynamic volume (Account Cautioned)
             trade_volume = self.symbol_min_volume
             if getattr(self.config, 'dynamic_sizing', False):
                 balance = self.performance.get_current_balance()
                 if balance > 0:
-                    # Scale based on $100 balance and risk percentage. 
-                    # Assuming 1 min_volume is appropriate for a $100 account at 2% risk.
-                    scaling_factor = (balance / 100.0) * (self.config.risk_per_trade_pct / 2.0)
-                    scaling_factor = max(1.0, scaling_factor)
-                    trade_volume = int(self.symbol_min_volume * scaling_factor)
-                    # Snap to step volume (min_volume)
-                    trade_volume = trade_volume - (trade_volume % self.symbol_min_volume)
+                    # Precise formula for XAUUSD (1 pip = 0.01)
+                    # units = (balance * risk_pct / 100) / (SL * 0.01)
+                    # simplified: units = (balance * risk_pct) / SL
+                    risk_pct = self.config.risk_per_trade_pct
+                    sl = self.config.risk_stop_loss_pips
+                    
+                    target_units = int((balance * risk_pct) / sl)
+                    
+                    # Snap to symbol step volume
+                    trade_volume = target_units - (target_units % self.symbol_min_volume)
                     if trade_volume < self.symbol_min_volume:
                         trade_volume = self.symbol_min_volume
             
-            self.performance.record_trade_attempt(side, 100, self.symbol_id, "placed")
+            self.performance.record_trade_attempt(side, trade_volume, self.symbol_id, "placed")
             try:
                 await self.client.place_market_order(
                     self.account_id,
@@ -187,7 +215,8 @@ class HFTBot:
                     sl_pips=self.config.risk_stop_loss_pips,
                     tp_pips=self.config.risk_take_profit_pips
                 )
-                await self.notifier.send_message(f"🚀 <b>Order Placed</b> — {side} order executed")
+                self.last_trade_time = time.time() # Update cooldown
+                await self.notifier.send_message(f"🚀 <b>Order Placed</b> — {side} order executed\nVolume: {trade_volume/1000:.2f} Lots\nPosition #{num_positions + 1}")
             except Exception as e:
                 logger.error(f"❌ Execution Error: {e}")
                 await self.notifier.notify_error(f"Order Execution Failed: {e}")

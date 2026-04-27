@@ -8,19 +8,22 @@ ctrader:
 # Strategy Settings
 strategy:
   symbol_name: "XAUUSD"
-  target_confidence: 0.82
+  target_confidence: 0.90
   dry_run: false
   model_path: "xgboost_gold_model.json"
   allow_mock_model: false
   
-# Risk Management (Placeholder for Step 4)
+# Risk Management
 risk:
-  max_drawdown_pct: 10.0 # Increased risk
+  max_drawdown_pct: 10.0 
   stop_loss_pips: 20
   take_profit_pips: 50
   auto_break_even_pips: 15
   dynamic_sizing: true
-  risk_per_trade_pct: 5.0
+  risk_per_trade_pct: 3.0
+  daily_profit_target: 150
+  max_daily_loss: 15
+  max_positions: 3
 
 # Telegram Settings
 telegram:
