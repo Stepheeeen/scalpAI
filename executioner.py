@@ -29,13 +29,13 @@ class OrderManager:
             self.logger.info(f"✅ Deal: ID={deal.dealId} PosID={pos.positionId} ClosingID={getattr(deal, 'closingDealId', 'None')}")
             
             # 1. Check if it's an OPEN or CLOSE
-            # Use hasattr because some proto versions might not have the field if it's empty
-            is_closing = hasattr(deal, 'closingDealId') and deal.closingDealId
+            is_closing = deal.HasField('closePositionDetail')
             
             if is_closing: # This is a closing deal
                 # Calculate PnL and Commission
-                pnl = deal.realizedPnL / 100.0 if hasattr(deal, 'realizedPnL') else 0.0
-                comm = deal.commission / 100.0 if hasattr(deal, 'commission') else 0.0
+                # PnL is in grossProfit, commission in deal.commission
+                pnl = deal.closePositionDetail.grossProfit / 100.0
+                comm = deal.commission / 100.0
                 
                 self.logger.info(f"💰 Trade Closed: PnL=${pnl:,.2f}, Comm=${comm:,.2f}")
                 
