@@ -7,8 +7,8 @@ import os
 # Configuration
 INPUT_FILE = "live_gold_data.csv"
 MODEL_OUTPUT = "xgboost_gold_model.json"
-TARGET_PIPS = 50 # We want to predict a 50-pip move for 10x growth
-LOOKAHEAD_TICKS = 100 # ...within the next 100 ticks
+TARGET_PIPS = 15 # True scalping target
+LOOKAHEAD_TICKS = 200 # More breathing room
 
 def generate_labels(df):
     """Generates 1 for BUY, 2 for SELL, 0 for NONE based on future price moves."""

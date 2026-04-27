@@ -2,8 +2,8 @@ import pandas as pd
 df = pd.read_csv("live_gold_data.csv")
 df['mid'] = (df['bid'] + df['ask']) / 2
 labels = []
-LOOKAHEAD_TICKS = 100
-TARGET_PIPS = 50
+LOOKAHEAD_TICKS = 200
+TARGET_PIPS = 15
 for i in range(len(df) - LOOKAHEAD_TICKS):
     current_price = df['mid'].iloc[i]
     future_prices = df['mid'].iloc[i+1 : i+LOOKAHEAD_TICKS+1]

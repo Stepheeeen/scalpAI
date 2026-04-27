@@ -216,7 +216,7 @@ class HFTBot:
                     tp_pips=self.config.risk_take_profit_pips
                 )
                 self.last_trade_time = time.time() # Update cooldown
-                await self.notifier.send_message(f"🚀 <b>Order Placed</b> — {side} order executed\nVolume: {trade_volume/1000:.2f} Lots\nPosition #{num_positions + 1}")
+                await self.notifier.send_message(f"🚀 <b>Order Placed</b> — {side} order executed\nVolume: {trade_volume/self.symbol_lot_size:.2f} Lots\nPosition #{num_positions + 1}")
             except Exception as e:
                 logger.error(f"❌ Execution Error: {e}")
                 await self.notifier.notify_error(f"Order Execution Failed: {e}")
@@ -450,8 +450,10 @@ class HFTBot:
                     res_detail.ParseFromString(msg_detail.payload)
                     
                     if res_detail.symbol:
-                        self.symbol_min_volume = res_detail.symbol[0].minVolume
-                        logger.info(f"🔍 Symbol {self.config.symbol_name} minVolume: {self.symbol_min_volume}")
+                        sym = res_detail.symbol[0]
+                        self.symbol_min_volume = sym.minVolume
+                        self.symbol_lot_size = sym.lotSize if hasattr(sym, 'lotSize') else 1000
+                        logger.info(f"🔍 Symbol {self.config.symbol_name} | minVolume: {self.symbol_min_volume} | lotSize: {self.symbol_lot_size}")
                     break
         
         if not self.symbol_id:
