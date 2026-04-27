@@ -4,3 +4,5 @@ __pycache__/
 *.csv
 openapi_pb2/
 venv
+session_stats.json
+bot_audit.log
