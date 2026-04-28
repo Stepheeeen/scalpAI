@@ -135,15 +135,19 @@ class HFTBot:
             num_positions = len(self.executioner.positions)
             can_add_position = num_positions < self.config.max_positions
             
-            # Cooldown check (60 seconds between any trade)
-            current_time = time.time()
-            cooldown_active = (current_time - self.last_trade_time) < 60
+            # Pyramiding Logic (Only allow new position if all existing are at Break-Even)
+            all_at_be = True
+            if num_positions > 0:
+                for pos_id, data in self.executioner.positions.items():
+                    if not data["has_be_set"]:
+                        all_at_be = False
+                        break
             
             accepted_signal = (
                 signal_type != 0 and 
                 confidence >= self.config.target_confidence and 
                 can_add_position and 
-                not cooldown_active
+                all_at_be
             )
             
             # Check Daily Limits before any trade entry
@@ -161,8 +165,8 @@ class HFTBot:
                 logger.debug(f"Signal ignored: Max positions ({self.config.max_positions}) reached.")
                 return
                 
-            if cooldown_active:
-                logger.debug(f"Signal ignored: Cooldown active (last trade < 60s ago).")
+            if num_positions > 0 and not all_at_be:
+                logger.debug(f"Signal ignored: Pyramiding block (existing position not at Break-Even).")
                 return
 
             side = "BUY" if signal_type == 1 else "SELL"

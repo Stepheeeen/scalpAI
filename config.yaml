@@ -17,13 +17,13 @@ strategy:
 risk:
   max_drawdown_pct: 10.0 
   stop_loss_pips: 10
-  take_profit_pips: 15
-  auto_break_even_pips: 7
+  take_profit_pips: 7
+  auto_break_even_pips: 3
   dynamic_sizing: true
-  risk_per_trade_pct: 2.0
+  risk_per_trade_pct: 5.0
   daily_profit_target: 150
   max_daily_loss: 15
-  max_positions: 1
+  max_positions: 20
 
 # Telegram Settings
 telegram:

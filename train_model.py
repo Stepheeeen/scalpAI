@@ -7,7 +7,7 @@ import os
 # Configuration
 INPUT_FILE = "live_gold_data.csv"
 MODEL_OUTPUT = "xgboost_gold_model.json"
-TARGET_PIPS = 15 # True scalping target
+TARGET_PIPS = 7 # True scalping target
 LOOKAHEAD_TICKS = 200 # More breathing room
 
 def generate_labels(df):
