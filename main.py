@@ -55,6 +55,8 @@ class HFTBot:
             audit_logger=self.tick_logger,
             live_mode=not self.config.dry_run,
             target_confidence=self.config.target_confidence,
+            daily_profit_target=self.config.daily_target,
+            max_daily_loss=self.config.max_loss
         )
         # Set performance tracker for KPI access via Telegram
         self.notifier.set_performance_tracker(self.performance)
@@ -142,12 +144,20 @@ class HFTBot:
                     if not data["has_be_set"]:
                         all_at_be = False
                         break
+                        
+            # Post-Loss Cooldown Logic (Wait 5 minutes after a loss)
+            current_time = time.time()
+            loss_cooldown_active = False
+            if self.executioner.last_loss_time > 0:
+                if (current_time - self.executioner.last_loss_time) < 300: # 5 minutes
+                    loss_cooldown_active = True
             
             accepted_signal = (
                 signal_type != 0 and 
                 confidence >= self.config.target_confidence and 
                 can_add_position and 
-                all_at_be
+                all_at_be and
+                not loss_cooldown_active
             )
             
             # Check Daily Limits before any trade entry
@@ -167,6 +177,10 @@ class HFTBot:
                 
             if num_positions > 0 and not all_at_be:
                 logger.debug(f"Signal ignored: Pyramiding block (existing position not at Break-Even).")
+                return
+                
+            if loss_cooldown_active:
+                logger.debug(f"Signal ignored: Post-loss cooldown active (last loss < 5m ago).")
                 return
 
             side = "BUY" if signal_type == 1 else "SELL"

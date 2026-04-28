@@ -9,6 +9,7 @@ class OrderManager:
         self.performance = performance
         self.account_id = account_id
         self.positions = {} # position_id -> {entry_price, side, has_be_set}
+        self.last_loss_time = 0
         self.logger = logging.getLogger("OrderManager")
 
     async def handle_execution_event(self, proto_msg):
@@ -41,6 +42,10 @@ class OrderManager:
                 
                 if self.performance:
                     self.performance.log_trade(pnl, comm)
+                    
+                if pnl < 0:
+                    import time
+                    self.last_loss_time = time.time()
                 
                 if pos.positionId in self.positions:
                     del self.positions[pos.positionId]

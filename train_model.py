@@ -8,6 +8,7 @@ import os
 INPUT_FILE = "live_gold_data.csv"
 MODEL_OUTPUT = "xgboost_gold_model.json"
 TARGET_PIPS = 7 # True scalping target
+STOP_LOSS_PIPS = 10 # Hard stop
 LOOKAHEAD_TICKS = 200 # More breathing room
 
 def generate_labels(df):
@@ -16,20 +17,42 @@ def generate_labels(df):
     df['mid'] = (df['bid'] + df['ask']) / 2
     
     labels = []
-    for i in range(len(df) - LOOKAHEAD_TICKS):
-        current_price = df['mid'].iloc[i]
-        future_prices = df['mid'].iloc[i+1 : i+LOOKAHEAD_TICKS+1]
+    tp_val = TARGET_PIPS * 0.01
+    sl_val = STOP_LOSS_PIPS * 0.01
+    
+    mid_prices = df['mid'].values
+    n = len(mid_prices)
+    
+    for i in range(n - LOOKAHEAD_TICKS):
+        current_price = mid_prices[i]
         
-        # Gold 1 pip = 0.01. 50 pips = 0.50
-        max_move_up = future_prices.max() - current_price
-        max_move_down = current_price - future_prices.min()
+        buy_win = False
+        sell_win = False
         
-        if max_move_up >= (TARGET_PIPS * 0.01):
-            labels.append(1) # Up move
-        elif max_move_down >= (TARGET_PIPS * 0.01):
-            labels.append(2) # Down move
+        # Simulate exact trade path for BUY
+        for j in range(1, LOOKAHEAD_TICKS + 1):
+            move = mid_prices[i + j] - current_price
+            if move <= -sl_val:
+                break # Hit Stop Loss first
+            if move >= tp_val:
+                buy_win = True
+                break # Hit Take Profit first
+                
+        # Simulate exact trade path for SELL
+        for j in range(1, LOOKAHEAD_TICKS + 1):
+            move = mid_prices[i + j] - current_price
+            if move >= sl_val:
+                break # Hit Stop Loss first
+            if move <= -tp_val:
+                sell_win = True
+                break # Hit Take Profit first
+        
+        if buy_win and not sell_win:
+            labels.append(1)
+        elif sell_win and not buy_win:
+            labels.append(2)
         else:
-            labels.append(0) # Noise
+            labels.append(0) # Ambiguous or SL hit
             
     # Pad labels to match df length
     labels.extend([0] * LOOKAHEAD_TICKS)
